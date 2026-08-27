@@ -448,6 +448,10 @@
   var POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
   var TEAMS = CONFIG.teams;
 
+  function teamLabel(n) {
+    return (CONFIG.team_names && CONFIG.team_names[n - 1]) || ("Team " + n);
+  }
+
   var state = loadState();
 
   function loadState() {
@@ -455,7 +459,7 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
     } catch (e) { /* private browsing / blocked storage */ }
-    return { picks: {}, order: [], myTeam: 1 };
+    return { picks: {}, order: [], myTeam: CONFIG.my_team || 1 };
   }
   function saveState() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
@@ -465,10 +469,10 @@
   for (var t = 1; t <= TEAMS; t++) {
     var opt = document.createElement("option");
     opt.value = t;
-    opt.textContent = "Team " + t;
+    opt.textContent = teamLabel(t);
     myTeamSelect.appendChild(opt);
   }
-  myTeamSelect.value = state.myTeam || 1;
+  myTeamSelect.value = state.myTeam || CONFIG.my_team || 1;
   myTeamSelect.addEventListener("change", function () {
     state.myTeam = parseInt(myTeamSelect.value, 10);
     saveState();
@@ -505,7 +509,7 @@
     var wait = picksUntilMyTurn(pickNum);
     document.getElementById("clockPick").textContent = pickNum;
     document.getElementById("clockRound").textContent = round;
-    document.getElementById("clockTeam").textContent = "Team " + onClock;
+    document.getElementById("clockTeam").textContent = teamLabel(onClock);
     document.getElementById("clockWait").textContent = wait === 0 ? "Now" : wait;
     var box = document.getElementById("clockBox");
     box.classList.toggle("my-turn", onClock === (state.myTeam || 1));
@@ -688,7 +692,7 @@
       var actionHtml;
       if (isDrafted) {
         var pick = state.picks[p.id];
-        actionHtml = '<span class="drafted-tag">Team ' + pick.team + ' · Pick ' + pick.pick + '</span> ' +
+        actionHtml = '<span class="drafted-tag">' + teamLabel(pick.team) + ' · Pick ' + pick.pick + '</span> ' +
           '<button class="undraft-btn" data-undraft="' + p.id + '">undo</button>';
       } else {
         actionHtml = '<button class="draft-btn" data-draft="' + p.id + '">Draft</button>';

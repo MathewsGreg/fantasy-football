@@ -1,6 +1,19 @@
 {
   "teams": 10,
   "scoring": "half_ppr",
+  "my_team": 4,
+  "team_names": [
+    "Couch Potatoes",
+    "Big Red Dogs",
+    "Cutie Cats",
+    "Mighty Wombats",
+    "Boo Bears",
+    "Irie's Spirit",
+    "Sharks",
+    "Sneaky Stegos",
+    "Isaac",
+    "Beach Cyclones"
+  ],
   "roster_slots": {
     "QB": 1,
     "RB": 2,

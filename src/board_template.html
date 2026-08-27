@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Draft Day Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --bg: #f5f6f3;
+    --surface: #ffffff;
+    --surface-2: #eef1ec;
+    --border: #dde1da;
+    --text: #1b2420;
+    --text-muted: #5b6660;
+    --accent: #2f5d3a;
+    --accent-contrast: #eaf3ec;
+    --warn: #b8722a;
+    --warn-bg: #f7ead9;
+    --critical: #a33636;
+    --critical-bg: #f6e1e1;
+    --info: #35618c;
+    --info-bg: #e3edf5;
+    --shadow: 0 1px 2px rgba(20, 30, 20, 0.06), 0 4px 14px rgba(20, 30, 20, 0.05);
+    --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+    --font-body: "Public Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121814;
+      --surface: #1b231d;
+      --surface-2: #212b23;
+      --border: #303c33;
+      --text: #e7ece7;
+      --text-muted: #9aa79d;
+      --accent: #74c48a;
+      --accent-contrast: #16261c;
+      --warn: #e0a458;
+      --warn-bg: #3a2e1a;
+      --critical: #e28080;
+      --critical-bg: #3a1f1f;
+      --info: #85b7de;
+      --info-bg: #1c2c3a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121814;
+    --surface: #1b231d;
+    --surface-2: #212b23;
+    --border: #303c33;
+    --text: #e7ece7;
+    --text-muted: #9aa79d;
+    --accent: #74c48a;
+    --accent-contrast: #16261c;
+    --warn: #e0a458;
+    --warn-bg: #3a2e1a;
+    --critical: #e28080;
+    --critical-bg: #3a1f1f;
+    --info: #85b7de;
+    --info-bg: #1c2c3a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .row-drafted { transition: opacity 0.25s ease, background-color 0.25s ease; }
+  }
+  ::selection { background: var(--accent-contrast); color: var(--accent); }
+
+  a { color: var(--info); }
+  button {
+    font-family: var(--font-body);
+    cursor: pointer;
+  }
+  button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .app { max-width: 1180px; margin: 0 auto; padding: 0 16px 48px; }
+
+  /* ---- scoreboard header ---- */
+  .scoreboard {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    padding: 14px 0 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .scoreboard-inner {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .clock {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 14px;
+    box-shadow: var(--shadow);
+  }
+  .clock .num {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 26px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+  .clock .lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .clock .on-clock {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .clock.my-turn {
+    background: var(--accent-contrast);
+    border-color: var(--accent);
+  }
+  .controls { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .controls label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  select, .btn {
+    font-size: 13px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .btn { font-weight: 600; }
+  .btn:hover { background: var(--surface-2); }
+  .btn.danger { color: var(--critical); }
+  .btn.ghost { border-color: transparent; background: transparent; }
+
+  .source-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  .source-note.sample {
+    color: var(--warn);
+    font-weight: 600;
+  }
+
+  /* ---- scarcity strip ---- */
+  .scarcity {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .scarcity-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  .scarcity-cell .pos {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  .scarcity-cell .count {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .scarcity-cell .count.warn { color: var(--warn); }
+  .scarcity-cell .count.critical { color: var(--critical); }
+  .scarcity-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface-2);
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .scarcity-bar > div { height: 100%; background: var(--accent); }
+  .scarcity-cell.warn .scarcity-bar > div { background: var(--warn); }
+  .scarcity-cell.critical .scarcity-bar > div { background: var(--critical); }
+
+  /* ---- layout ---- */
+  .layout { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 780px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .filters {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    position: sticky;
+    top: 148px;
+  }
+  @media (max-width: 780px) {
+    .filters { position: static; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  }
+  .filters input[type="search"] {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  @media (max-width: 780px) { .filters input[type="search"] { width: 180px; margin-bottom: 0; } }
+  .pos-tabs { display: flex; flex-direction: column; gap: 2px; }
+  @media (max-width: 780px) { .pos-tabs { flex-direction: row; flex-wrap: wrap; } }
+  .pos-tab {
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+  }
+  .pos-tab:hover { background: var(--surface-2); }
+  .pos-tab.active { background: var(--accent-contrast); color: var(--accent); }
+  .pos-tab .n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .tier-legend { margin-top: 12px; font-size: 11px; color: var(--text-muted); }
+  .tier-legend .row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .tier-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  /* ---- table ---- */
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--text); }
+  thead th.sorted { color: var(--accent); }
+  tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.tier-start td { border-top: 2px solid var(--border); }
+  .rank-cell { font-family: var(--font-mono); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .player-name { font-weight: 700; }
+  .player-meta { font-size: 12px; color: var(--text-muted); }
+  .badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+  }
+  .badge.pos-QB { background: var(--info-bg); color: var(--info); }
+  .badge.pos-RB { background: var(--accent-contrast); color: var(--accent); }
+  .badge.pos-WR { background: var(--warn-bg); color: var(--warn); }
+  .badge.pos-TE { background: var(--critical-bg); color: var(--critical); }
+  .badge.pos-K, .badge.pos-DST { background: var(--surface-2); color: var(--text-muted); }
+  .tier-chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .value-chip { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .value-chip.pos { color: var(--accent); }
+  .value-chip.neg { color: var(--text-muted); }
+  .row-drafted { opacity: 0.45; }
+  .row-drafted .player-name { text-decoration: line-through; }
+  .drafted-tag {
+    font-size: 11px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .draft-btn {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--accent);
+    background: var(--accent-contrast);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .draft-btn:hover { background: var(--accent); color: var(--accent-contrast); }
+  .undraft-btn {
+    font-size: 11px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    text-decoration: underline;
+  }
+  .empty-state { padding: 40px 16px; text-align: center; color: var(--text-muted); }
+
+  footer.note {
+    margin-top: 18px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="scoreboard">
+    <div class="scoreboard-inner">
+      <div class="brand">Draft Board</div>
+
+      <div class="clock" id="clockBox">
+        <div>
+          <div class="lbl">Pick</div>
+          <div class="num" id="clockPick">1</div>
+        </div>
+        <div>
+          <div class="lbl">Round</div>
+          <div class="num" id="clockRound">1</div>
+        </div>
+        <div>
+          <div class="lbl">On the clock</div>
+          <div class="on-clock" id="clockTeam">Team 1</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <label>My team
+          <select id="myTeamSelect"></select>
+        </label>
+        <button class="btn ghost" id="undoBtn">Undo last pick</button>
+        <button class="btn danger" id="resetBtn">Reset draft</button>
+      </div>
+    </div>
+    <div class="source-note" id="sourceNote"></div>
+  </div>
+
+  <div class="scarcity" id="scarcityStrip"></div>
+
+  <div class="layout">
+    <div class="filters">
+      <input type="search" id="searchInput" placeholder="Search player or team…" autocomplete="off" />
+      <div class="pos-tabs" id="posTabs"></div>
+      <div class="tier-legend">
+        <div>Rows group by consensus tier — a break usually means a real drop-off, not just noise.</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="rank">Rank</th>
+            <th data-sort="tier">Tier</th>
+            <th data-sort="player">Player</th>
+            <th data-sort="bye">Bye</th>
+            <th data-sort="value_over_replacement" id="valueHeader">Value</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none;">No players match that filter.</div>
+    </div>
+  </div>
+
+  <footer class="note">Picks and draft state are saved only in this browser (localStorage) — they don't sync anywhere else.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CONFIG = __CONFIG_JSON__;
+  var PLAYERS = __DATA_JSON__;
+  var IS_SAMPLE = __IS_SAMPLE_JSON__;
+  var GENERATED_AT = __GENERATED_AT_JSON__;
+  var STORAGE_KEY = "ff-draft-board-v1::" + CONFIG.teams + "team-" + CONFIG.scoring;
+
+  var sourceNote = document.getElementById("sourceNote");
+  sourceNote.textContent = IS_SAMPLE
+    ? "⚠ Placeholder sample data — replace fantasy-football/data/cheatsheet.csv with your real FantasyPros export and rebuild before draft day. Generated " + GENERATED_AT + "."
+    : "Rankings generated " + GENERATED_AT + " from your FantasyPros export.";
+  sourceNote.className = "source-note" + (IS_SAMPLE ? " sample" : "");
+
+  var POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+  var TEAMS = CONFIG.teams;
+
+  var state = loadState();
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* private browsing / blocked storage */ }
+    return { picks: {}, order: [], myTeam: 1 };
+  }
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+
+  var myTeamSelect = document.getElementById("myTeamSelect");
+  for (var t = 1; t <= TEAMS; t++) {
+    var opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = "Team " + t;
+    myTeamSelect.appendChild(opt);
+  }
+  myTeamSelect.value = state.myTeam || 1;
+  myTeamSelect.addEventListener("change", function () {
+    state.myTeam = parseInt(myTeamSelect.value, 10);
+    saveState();
+    render();
+  });
+
+  var hasPoints = PLAYERS.some(function (p) { return p.value_basis === "points"; });
+  document.getElementById("valueHeader").textContent = hasPoints ? "Pts vs. repl." : "Cushion";
+
+  var activePos = "ALL";
+  var sortKey = "rank";
+  var sortDir = 1;
+
+  function snakeTeamOnClock(pick) {
+    var round = Math.ceil(pick / TEAMS);
+    var slot = pick - (round - 1) * TEAMS;
+    return round % 2 === 1 ? slot : TEAMS + 1 - slot;
+  }
+
+  function renderClock() {
+    var pickNum = state.order.length + 1;
+    var round = Math.ceil(pickNum / TEAMS);
+    var onClock = snakeTeamOnClock(pickNum);
+    document.getElementById("clockPick").textContent = pickNum;
+    document.getElementById("clockRound").textContent = round;
+    document.getElementById("clockTeam").textContent = "Team " + onClock;
+    var box = document.getElementById("clockBox");
+    box.classList.toggle("my-turn", onClock === (state.myTeam || 1));
+  }
+
+  function draftedCountByPos() {
+    var counts = {};
+    Object.keys(state.picks).forEach(function (id) {
+      var p = playerIndex[id];
+      if (p) counts[p.position] = (counts[p.position] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function renderScarcity() {
+    var strip = document.getElementById("scarcityStrip");
+    strip.innerHTML = "";
+    var counts = draftedCountByPos();
+    var positions = ["QB", "RB", "WR", "TE", "K", "DST"];
+    positions.forEach(function (pos) {
+      var players = byPosition[pos] || [];
+      var starters = players.length ? players[0].effective_starters : 0;
+      var drafted = counts[pos] || 0;
+      var remaining = starters - drafted;
+      var cell = document.createElement("div");
+      cell.className = "scarcity-cell";
+      var ratio = starters ? Math.max(0, remaining) / starters : 0;
+      var level = remaining <= 2 ? "critical" : (remaining <= Math.ceil(starters * 0.25) ? "warn" : "");
+      if (level) cell.classList.add(level);
+      cell.innerHTML =
+        '<div class="pos">' + pos + '</div>' +
+        '<div class="count ' + level + '">' + remaining + ' <span style="font-size:11px;color:var(--text-muted);font-weight:500;">/ ' + starters + '</span></div>' +
+        '<div class="scarcity-bar"><div style="width:' + Math.max(0, Math.min(100, ratio * 100)) + '%"></div></div>';
+      strip.appendChild(cell);
+    });
+  }
+
+  var posTabsEl = document.getElementById("posTabs");
+  function renderPosTabs() {
+    posTabsEl.innerHTML = "";
+    POSITIONS.forEach(function (pos) {
+      var count = pos === "ALL"
+        ? PLAYERS.filter(function (p) { return !state.picks[p.player + "|" + p.team]; }).length
+        : (byPosition[pos] || []).filter(function (p) { return !state.picks[p.player + "|" + p.team]; }).length;
+      var btn = document.createElement("button");
+      btn.className = "pos-tab" + (pos === activePos ? " active" : "");
+      btn.innerHTML = "<span>" + pos + "</span><span class='n'>" + count + "</span>";
+      btn.addEventListener("click", function () { activePos = pos; render(); });
+      posTabsEl.appendChild(btn);
+    });
+  }
+
+  var playerIndex = {};
+  var byPosition = {};
+  PLAYERS.forEach(function (p) {
+    p.id = p.player + "|" + p.team;
+    playerIndex[p.id] = p;
+    (byPosition[p.position] = byPosition[p.position] || []).push(p);
+  });
+  Object.keys(byPosition).forEach(function (pos) {
+    byPosition[pos].sort(function (a, b) { return a.rank - b.rank; });
+  });
+
+  function draftPlayer(id) {
+    if (state.picks[id]) return;
+    var pickNum = state.order.length + 1;
+    var team = snakeTeamOnClock(pickNum);
+    state.picks[id] = { pick: pickNum, team: team };
+    state.order.push(id);
+    saveState();
+    render();
+  }
+  function undoLast() {
+    var lastId = state.order.pop();
+    if (lastId) delete state.picks[lastId];
+    saveState();
+    render();
+  }
+  function resetDraft() {
+    if (!confirm("Clear all picks and start over?")) return;
+    state.picks = {};
+    state.order = [];
+    saveState();
+    render();
+  }
+  document.getElementById("undoBtn").addEventListener("click", undoLast);
+  document.getElementById("resetBtn").addEventListener("click", resetDraft);
+
+  var searchInput = document.getElementById("searchInput");
+  searchInput.addEventListener("input", render);
+
+  document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+    th.addEventListener("click", function () {
+      var key = th.getAttribute("data-sort");
+      if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = 1; }
+      render();
+    });
+  });
+
+  function tbody() { return document.getElementById("tableBody"); }
+
+  function render() {
+    renderClock();
+    renderScarcity();
+    renderPosTabs();
+
+    document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+      th.classList.toggle("sorted", th.getAttribute("data-sort") === sortKey);
+    });
+
+    var query = searchInput.value.trim().toLowerCase();
+    var list = PLAYERS.filter(function (p) {
+      if (activePos !== "ALL" && p.position !== activePos) return false;
+      if (query && p.player.toLowerCase().indexOf(query) === -1 && (p.team || "").toLowerCase().indexOf(query) === -1) return false;
+      return true;
+    });
+    list.sort(function (a, b) {
+      var av = a[sortKey], bv = b[sortKey];
+      if (av === bv) return a.rank - b.rank;
+      return av > bv ? sortDir : -sortDir;
+    });
+
+    var body = tbody();
+    body.innerHTML = "";
+    document.getElementById("emptyState").style.display = list.length ? "none" : "block";
+
+    var lastTier = null;
+    list.forEach(function (p) {
+      var tr = document.createElement("tr");
+      var isDrafted = !!state.picks[p.id];
+      tr.className = "row-drafted-wrap" + (isDrafted ? " row-drafted" : "");
+      if (sortKey === "rank" && p.tier !== lastTier) {
+        tr.classList.add("tier-start");
+        lastTier = p.tier;
+      }
+
+      var valClass = p.value_over_replacement > 0 ? "pos" : "neg";
+      var valPrefix = p.value_over_replacement > 0 ? "+" : "";
+
+      var actionHtml;
+      if (isDrafted) {
+        var pick = state.picks[p.id];
+        actionHtml = '<span class="drafted-tag">Team ' + pick.team + ' · Pick ' + pick.pick + '</span> ' +
+          '<button class="undraft-btn" data-undraft="' + p.id + '">undo</button>';
+      } else {
+        actionHtml = '<button class="draft-btn" data-draft="' + p.id + '">Draft</button>';
+      }
+
+      tr.innerHTML =
+        '<td class="rank-cell">' + p.rank + '</td>' +
+        '<td class="tier-chip">T' + p.tier + '</td>' +
+        '<td><span class="player-name">' + p.player + '</span> ' +
+          '<span class="badge pos-' + p.position + '">' + p.position + '</span>' +
+          '<div class="player-meta">' + (p.team || "—") + '</div></td>' +
+        '<td>' + (p.bye != null ? p.bye : "—") + '</td>' +
+        '<td class="value-chip ' + valClass + '">' + valPrefix + p.value_over_replacement + '</td>' +
+        '<td>' + actionHtml + '</td>';
+      body.appendChild(tr);
+    });
+
+    body.querySelectorAll("[data-draft]").forEach(function (btn) {
+      btn.addEventListener("click", function () { draftPlayer(btn.getAttribute("data-draft")); });
+    });
+    body.querySelectorAll("[data-undraft]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-undraft");
+        delete state.picks[id];
+        state.order = state.order.filter(function (x) { return x !== id; });
+        saveState();
+        render();
+      });
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

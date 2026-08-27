@@ -1,0 +1,19 @@
+{
+  "teams": 10,
+  "scoring": "half_ppr",
+  "roster_slots": {
+    "QB": 1,
+    "RB": 2,
+    "WR": 2,
+    "TE": 1,
+    "FLEX": 1,
+    "K": 1,
+    "DST": 1
+  },
+  "flex_eligible": ["RB", "WR", "TE"],
+  "flex_split_weights": {
+    "RB": 0.55,
+    "WR": 0.40,
+    "TE": 0.05
+  }
+}

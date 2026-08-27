@@ -377,6 +377,10 @@
           <div class="lbl">On the clock</div>
           <div class="on-clock" id="clockTeam">Team 1</div>
         </div>
+        <div>
+          <div class="lbl">Your turn in</div>
+          <div class="num" id="clockWait">0</div>
+        </div>
       </div>
 
       <div class="controls">
@@ -398,6 +402,8 @@
       <div class="pos-tabs" id="posTabs"></div>
       <div class="tier-legend">
         <div>Rows group by consensus tier — a break usually means a real drop-off, not just noise.</div>
+        <div style="margin-top:8px;"><strong>VORP</strong>: value over the last startable player at that position, league-wide — a fixed preseason baseline.</div>
+        <div style="margin-top:6px;"><strong>VONA</strong>: value over whoever's predicted to be the best player left at that position <em>by your next pick</em> — assumes every intervening pick goes to the best-remaining player by consensus rank, so treat it as a rough guide to urgency, not gospel.</div>
       </div>
     </div>
 
@@ -409,7 +415,8 @@
             <th data-sort="tier">Tier</th>
             <th data-sort="player">Player</th>
             <th data-sort="bye">Bye</th>
-            <th data-sort="value_over_replacement" id="valueHeader">Value</th>
+            <th data-sort="value_over_replacement" id="valueHeader" title="Value Over Replacement Player">VORP</th>
+            <th data-sort="vona" id="vonaHeader" title="Value Over Next Available — cost of waiting until your next pick">VONA</th>
             <th></th>
           </tr>
         </thead>
@@ -469,7 +476,7 @@
   });
 
   var hasPoints = PLAYERS.some(function (p) { return p.value_basis === "points"; });
-  document.getElementById("valueHeader").textContent = hasPoints ? "Pts vs. repl." : "Cushion";
+  document.getElementById("valueHeader").textContent = hasPoints ? "VORP (pts)" : "VORP (rank)";
 
   var activePos = "ALL";
   var sortKey = "rank";
@@ -481,15 +488,54 @@
     return round % 2 === 1 ? slot : TEAMS + 1 - slot;
   }
 
+  // How many picks happen (by anyone) before it's my team's turn again.
+  // 0 means it's my turn right now.
+  function picksUntilMyTurn(pickNum) {
+    var myTeam = state.myTeam || 1;
+    for (var i = 0; i < TEAMS * 3; i++) {
+      if (snakeTeamOnClock(pickNum + i) === myTeam) return i;
+    }
+    return TEAMS; // shouldn't happen, but keep VONA finite if it does
+  }
+
   function renderClock() {
     var pickNum = state.order.length + 1;
     var round = Math.ceil(pickNum / TEAMS);
     var onClock = snakeTeamOnClock(pickNum);
+    var wait = picksUntilMyTurn(pickNum);
     document.getElementById("clockPick").textContent = pickNum;
     document.getElementById("clockRound").textContent = round;
     document.getElementById("clockTeam").textContent = "Team " + onClock;
+    document.getElementById("clockWait").textContent = wait === 0 ? "Now" : wait;
     var box = document.getElementById("clockBox");
     box.classList.toggle("my-turn", onClock === (state.myTeam || 1));
+  }
+
+  // VONA context: simulate the next `wait` picks going to the best-remaining
+  // player by consensus rank (a simplification — it doesn't model any one
+  // opponent's real tendencies), then find the best player left at each
+  // position after that. VONA = this player's VORP minus that player's VORP:
+  // the cost, in value, of waiting until your next turn instead of drafting
+  // this player now.
+  function computeVonaContext() {
+    var pickNum = state.order.length + 1;
+    var wait = picksUntilMyTurn(pickNum);
+    var available = PLAYERS.filter(function (p) { return !state.picks[p.id]; })
+      .sort(function (a, b) { return a.rank - b.rank; });
+    var prefixSet = {};
+    for (var i = 0; i < Math.min(wait, available.length); i++) prefixSet[available[i].id] = true;
+    var remainderByPos = {};
+    available.forEach(function (p) {
+      if (prefixSet[p.id]) return;
+      if (!(p.position in remainderByPos)) remainderByPos[p.position] = p;
+    });
+    return remainderByPos;
+  }
+
+  function computeVona(p, remainderByPos) {
+    var repl = remainderByPos[p.position];
+    if (!repl) return null; // position fully exhausted in the available pool
+    return p.value_over_replacement - repl.value_over_replacement;
   }
 
   function draftedCountByPos() {
@@ -578,10 +624,12 @@
   var searchInput = document.getElementById("searchInput");
   searchInput.addEventListener("input", render);
 
+  var DESCENDING_FIRST = { value_over_replacement: true, vona: true };
   document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
     th.addEventListener("click", function () {
       var key = th.getAttribute("data-sort");
-      if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = 1; }
+      if (sortKey === key) sortDir = -sortDir;
+      else { sortKey = key; sortDir = DESCENDING_FIRST[key] ? -1 : 1; }
       render();
     });
   });
@@ -603,8 +651,17 @@
       if (query && p.player.toLowerCase().indexOf(query) === -1 && (p.team || "").toLowerCase().indexOf(query) === -1) return false;
       return true;
     });
+
+    var remainderByPos = computeVonaContext();
+    list.forEach(function (p) {
+      p.vona = state.picks[p.id] ? null : computeVona(p, remainderByPos);
+    });
+
     list.sort(function (a, b) {
       var av = a[sortKey], bv = b[sortKey];
+      if (av == null && bv == null) return a.rank - b.rank;
+      if (av == null) return 1;
+      if (bv == null) return -1;
       if (av === bv) return a.rank - b.rank;
       return av > bv ? sortDir : -sortDir;
     });
@@ -625,6 +682,8 @@
 
       var valClass = p.value_over_replacement > 0 ? "pos" : "neg";
       var valPrefix = p.value_over_replacement > 0 ? "+" : "";
+      var vonaCell = p.vona == null ? "—" :
+        '<span class="value-chip ' + (p.vona > 0 ? "pos" : "neg") + '">' + (p.vona > 0 ? "+" : "") + p.vona + '</span>';
 
       var actionHtml;
       if (isDrafted) {
@@ -643,6 +702,7 @@
           '<div class="player-meta">' + (p.team || "—") + '</div></td>' +
         '<td>' + (p.bye != null ? p.bye : "—") + '</td>' +
         '<td class="value-chip ' + valClass + '">' + valPrefix + p.value_over_replacement + '</td>' +
+        '<td>' + vonaCell + '</td>' +
         '<td>' + actionHtml + '</td>';
       body.appendChild(tr);
     });

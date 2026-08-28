@@ -181,6 +181,50 @@
     font-weight: 600;
   }
 
+  /* ---- my roster panel ---- */
+  .roster-panel {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .roster-panel h2 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 16px;
+    margin: 0 0 10px;
+    color: var(--accent);
+  }
+  .roster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .roster-group h3 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    margin: 0 0 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .roster-group h3 .target { font-family: var(--font-mono); font-weight: 700; }
+  .roster-group h3.short .target { color: var(--warn); }
+  .roster-group h3.full .target { color: var(--accent); }
+  .roster-player { font-size: 12.5px; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+  .roster-player:last-child { border-bottom: none; }
+  .roster-player .nm { font-weight: 600; }
+  .roster-player .meta { color: var(--text-muted); font-size: 11px; }
+  .roster-empty { color: var(--text-muted); font-size: 12px; font-style: italic; }
+  .roster-note { margin-top: 12px; font-size: 11px; color: var(--text-muted); }
+
   /* ---- scarcity strip ---- */
   .scarcity {
     display: grid;
@@ -387,11 +431,18 @@
         <label>My team
           <select id="myTeamSelect"></select>
         </label>
+        <button class="btn" id="rosterBtn">My roster</button>
         <button class="btn ghost" id="undoBtn">Undo last pick</button>
         <button class="btn danger" id="resetBtn">Reset draft</button>
       </div>
     </div>
     <div class="source-note" id="sourceNote"></div>
+  </div>
+
+  <div class="roster-panel" id="rosterPanel" style="display:none;">
+    <h2 id="rosterTitle">My Roster</h2>
+    <div class="roster-grid" id="rosterGrid"></div>
+    <div class="roster-note">Flex isn't tracked as its own bucket — it's whichever RB/WR/TE you draft beyond the counts above.</div>
   </div>
 
   <div class="scarcity" id="scarcityStrip"></div>
@@ -574,6 +625,71 @@
     });
   }
 
+  function myRosterByPosition() {
+    var myTeamNum = state.myTeam || CONFIG.my_team || 1;
+    var mine = [];
+    Object.keys(state.picks).forEach(function (id) {
+      var pick = state.picks[id];
+      if (pick.team !== myTeamNum) return;
+      var p = playerIndex[id];
+      if (p) mine.push({ player: p, pickNum: pick.pick });
+    });
+    mine.sort(function (a, b) { return a.pickNum - b.pickNum; });
+    var byPos = {};
+    mine.forEach(function (entry) {
+      (byPos[entry.player.position] = byPos[entry.player.position] || []).push(entry);
+    });
+    return byPos;
+  }
+
+  function targetLabel(target) { return Array.isArray(target) ? target[0] + "–" + target[1] : String(target); }
+  function targetUpper(target) { return Array.isArray(target) ? target[1] : target; }
+
+  var ROSTER_ORDER = ["QB", "RB", "WR", "TE", "K", "DST"];
+  function renderRoster() {
+    var panel = document.getElementById("rosterPanel");
+    if (panel.style.display === "none") return; // skip the work while hidden
+    document.getElementById("rosterTitle").textContent = "My Roster — " + teamLabel(state.myTeam || CONFIG.my_team || 1);
+    var grid = document.getElementById("rosterGrid");
+    grid.innerHTML = "";
+    var byPos = myRosterByPosition();
+    var targets = CONFIG.my_roster_targets || {};
+    ROSTER_ORDER.forEach(function (pos) {
+      var entries = byPos[pos] || [];
+      var target = targets[pos];
+      var upper = target != null ? targetUpper(target) : null;
+      var group = document.createElement("div");
+      group.className = "roster-group";
+      var h3 = document.createElement("h3");
+      if (upper != null && entries.length >= upper) h3.className = "full";
+      else if (entries.length === 0) h3.className = "short";
+      var targetText = target != null ? targetLabel(target) + ((pos === "RB" || pos === "WR") ? " + flex" : "") : "";
+      h3.innerHTML = "<span>" + pos + "</span><span class='target'>" + entries.length + (targetText ? " / " + targetText : "") + "</span>";
+      group.appendChild(h3);
+      if (entries.length === 0) {
+        var empty = document.createElement("div");
+        empty.className = "roster-empty";
+        empty.textContent = "None yet";
+        group.appendChild(empty);
+      } else {
+        entries.forEach(function (entry) {
+          var row = document.createElement("div");
+          row.className = "roster-player";
+          row.innerHTML = "<div class='nm'>" + entry.player.player + "</div>" +
+            "<div class='meta'>" + (entry.player.team || "—") + " · Bye " + (entry.player.bye != null ? entry.player.bye : "—") + " · Pick " + entry.pickNum + "</div>";
+          group.appendChild(row);
+        });
+      }
+      grid.appendChild(group);
+    });
+  }
+
+  document.getElementById("rosterBtn").addEventListener("click", function () {
+    var panel = document.getElementById("rosterPanel");
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+    renderRoster();
+  });
+
   var posTabsEl = document.getElementById("posTabs");
   function renderPosTabs() {
     posTabsEl.innerHTML = "";
@@ -643,6 +759,7 @@
   function render() {
     renderClock();
     renderScarcity();
+    renderRoster();
     renderPosTabs();
 
     document.querySelectorAll("thead th[data-sort]").forEach(function (th) {

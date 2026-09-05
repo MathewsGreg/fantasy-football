@@ -111,10 +111,59 @@ Setup (one time):
 matches our draft-order numbering — those are two independent things ESPN
 doesn't guarantee line up.
 
-Once the connection's confirmed: combine `league.free_agents()` (ESPN's
-own view of who's actually available in *this* league — no need to
-manually cross-reference FantasyPros' rankings against 10 rosters by
-hand) with the same VORP logic from `vbd.py`, computed against your
-bench's weak spots instead of the whole league, plus FantasyPros' weekly
-(not draft) rankings for a second opinion. Not built yet — next step
-after the connection check passes.
+### The report
+
+`weekly_report.py` pulls your current-week box score (real ESPN slot
+assignments + per-week projections, not a hand-reconstructed roster),
+suggests a lineup by projection (`lineup.py`), diffs it against what
+ESPN actually has you starting, and ranks `league.free_agents()` by
+position — grouped by whether that position is short/ok/full against
+`my_roster_targets`, not one fake cross-position score. Writes
+`docs/fantasy/index.html`, alongside the MLB dashboard on the same
+GitHub Pages site (`.../mlb-elo/fantasy/`) — **deliberately doesn't
+publish FantasyPros' rankings table itself**, only this derived analysis
+from your own live league data.
+
+Run it directly: `cd src && python3 weekly_report.py`.
+
+### Automating it (Windows Task Scheduler)
+
+`scripts/weekly_refresh.ps1` mirrors `scripts/daily_refresh.ps1`'s
+pattern: run the report, commit + push `docs/fantasy/index.html` only if
+it changed, log everything, abort loudly (not silently) on any failure.
+
+One-time setup:
+
+1. Create a dedicated venv (same reasoning as the MLB one — kept outside
+   the Dropbox-synced folder to avoid file-locking mid-install):
+   ```
+   "C:\Users\Diggs\AppData\Local\Programs\Python\Python312\python.exe" -m venv "C:\Users\Diggs\venvs\fantasy_football"
+   "C:\Users\Diggs\venvs\fantasy_football\Scripts\python.exe" -m pip install -r fantasy-football\requirements.txt
+   ```
+2. Confirm `fantasy-football\.env` has real values (see Setup above) —
+   the scheduled task runs unattended, so this has to already be in place.
+3. Open **Task Scheduler** → Create Task (not "Basic Task", so you can
+   add multiple triggers on one task):
+   - **General**: name it e.g. "Fantasy Weekly Refresh"; "Run whether
+     user is logged on or not" if you want it to fire even when you're
+     away from the machine.
+   - **Triggers** → New, three times:
+     - Weekly, Tuesday, 9:00 AM (waiver planning — after the week's
+       games are final, before Tue-night/Wed-morning waiver processing)
+     - Weekly, Thursday, 9:00 AM (start/sit ahead of the Thursday night
+       game)
+     - Weekly, Sunday, 11:00 AM (start/sit ahead of the early/late
+       Sunday windows, once most injury news is in)
+   - **Actions** → New → Program/script: `powershell.exe`; Arguments:
+     `-ExecutionPolicy Bypass -File "C:\Users\Diggs\Dropbox\PC\Documents\Claude\mlb_elo\fantasy-football\scripts\weekly_refresh.ps1"`
+   - **Conditions**: uncheck "Start the task only if the computer is on
+     AC power" if this runs on a laptop, or it'll silently skip on
+     battery.
+4. Right-click the task → Run, once, to confirm it works before trusting
+   the schedule — check the log in `%LOCALAPPDATA%\fantasy_football\logs\`
+   and that `docs/fantasy/index.html` actually updated.
+
+Like the MLB job, this only ever pushes if the branch is `master` — if
+you're testing from a feature branch, `git checkout master` first (after
+merging) or the script aborts rather than committing somewhere the
+schedule won't find next time.

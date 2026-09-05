@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weekly Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --bg: #f5f6f3; --surface: #ffffff; --surface-2: #eef1ec; --border: #dde1da;
+    --text: #1b2420; --text-muted: #5b6660;
+    --accent: #2f5d3a; --accent-contrast: #eaf3ec;
+    --warn: #b8722a; --warn-bg: #f7ead9;
+    --critical: #a33636; --critical-bg: #f6e1e1;
+    --info: #35618c; --info-bg: #e3edf5;
+    --shadow: 0 1px 2px rgba(20,30,20,.06), 0 4px 14px rgba(20,30,20,.05);
+    --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+    --font-body: "Public Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121814; --surface: #1b231d; --surface-2: #212b23; --border: #303c33;
+      --text: #e7ece7; --text-muted: #9aa79d;
+      --accent: #74c48a; --accent-contrast: #16261c;
+      --warn: #e0a458; --warn-bg: #3a2e1a;
+      --critical: #e28080; --critical-bg: #3a1f1f;
+      --info: #85b7de; --info-bg: #1c2c3a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121814; --surface: #1b231d; --surface-2: #212b23; --border: #303c33;
+    --text: #e7ece7; --text-muted: #9aa79d;
+    --accent: #74c48a; --accent-contrast: #16261c;
+    --warn: #e0a458; --warn-bg: #3a2e1a;
+    --critical: #e28080; --critical-bg: #3a1f1f;
+    --info: #85b7de; --info-bg: #1c2c3a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+  .app { max-width: 900px; margin: 0 auto; padding: 24px 16px 56px; }
+  .masthead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .brand { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-transform: uppercase; letter-spacing: .02em; color: var(--accent); }
+  .subhead { color: var(--text-muted); font-size: 13px; }
+  .matchup {
+    margin: 16px 0 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .matchup .side { text-align: center; }
+  .matchup .team-name { font-weight: 700; }
+  .matchup .proj { font-family: var(--font-mono); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .matchup .vs { color: var(--text-muted); font-family: var(--font-display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+
+  h2 { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .03em; font-size: 17px; color: var(--accent); margin: 28px 0 10px; }
+
+  .changes { background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+  .changes ul { margin: 0; padding-left: 18px; }
+  .changes li { margin: 4px 0; }
+  .changes .none { color: var(--text-muted); font-style: italic; }
+
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
+  table { border-collapse: collapse; width: 100%; min-width: 480px; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  tbody tr:last-child td { border-bottom: none; }
+  .slot-cell { font-family: var(--font-mono); color: var(--text-muted); font-size: 12px; }
+  .proj-cell { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; margin-left: 6px; text-transform: uppercase; }
+  .tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .tag.short { background: var(--warn-bg); color: var(--warn); }
+  .tag.ok { background: var(--surface-2); color: var(--text-muted); }
+  .tag.full { background: var(--surface-2); color: var(--text-muted); opacity: .7; }
+
+  .waiver-group { margin-bottom: 18px; }
+  .waiver-group h3 { font-family: var(--font-display); font-size: 14px; letter-spacing: .03em; margin: 0 0 6px; display: flex; align-items: center; }
+
+  footer.note { margin-top: 28px; font-size: 11px; color: var(--text-muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="masthead">
+    <div class="brand">Weekly Report</div>
+    <div class="subhead" id="subhead"></div>
+  </div>
+
+  <div class="matchup" id="matchupBox"></div>
+
+  <h2>This Week's Lineup</h2>
+  <div class="changes" id="changesBox"></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Slot</th><th>Player</th><th>Team</th><th>Proj</th></tr></thead>
+      <tbody id="startersBody"></tbody>
+    </table>
+  </div>
+
+  <h2>Bench</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>Proj</th></tr></thead>
+      <tbody id="benchBody"></tbody>
+    </table>
+  </div>
+
+  <h2>Waiver Targets by Position</h2>
+  <div id="waiverBox"></div>
+
+  <footer class="note" id="footerNote"></footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var DATA = __REPORT_DATA_JSON__;
+
+  document.getElementById("subhead").textContent =
+    DATA.league_name + " — " + DATA.team_name + " — Week " + DATA.week;
+
+  var matchupBox = document.getElementById("matchupBox");
+  if (DATA.opponent) {
+    matchupBox.innerHTML =
+      '<div class="side"><div class="team-name">' + DATA.team_name + '</div><div class="proj">' + (DATA.my_projected != null ? DATA.my_projected : "—") + '</div></div>' +
+      '<div class="vs">vs</div>' +
+      '<div class="side"><div class="team-name">' + DATA.opponent + '</div><div class="proj">' + (DATA.opp_projected != null ? DATA.opp_projected : "—") + '</div></div>';
+  } else {
+    matchupBox.innerHTML = '<div style="color:var(--text-muted)">Bye week — no matchup.</div>';
+  }
+
+  var changesBox = document.getElementById("changesBox");
+  if (DATA.changes && DATA.changes.length) {
+    var ul = document.createElement("ul");
+    DATA.changes.forEach(function (c) {
+      var li = document.createElement("li");
+      li.textContent = c;
+      ul.appendChild(li);
+    });
+    changesBox.appendChild(ul);
+  } else {
+    changesBox.innerHTML = '<div class="none">No changes suggested — your current lineup already looks optimal by projection.</div>';
+  }
+
+  var startersBody = document.getElementById("startersBody");
+  DATA.starters.forEach(function (p) {
+    var tr = document.createElement("tr");
+    var statusTag = p.status ? '<span class="tag warn">' + p.status + '</span>' : "";
+    tr.innerHTML =
+      '<td class="slot-cell">' + p.slot + '</td>' +
+      '<td>' + p.name + statusTag + '</td>' +
+      '<td>' + (p.team || "—") + '</td>' +
+      '<td class="proj-cell">' + (p.proj || "—") + '</td>';
+    startersBody.appendChild(tr);
+  });
+
+  var benchBody = document.getElementById("benchBody");
+  if (!DATA.bench.length) {
+    benchBody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-style:italic;">Empty bench</td></tr>';
+  }
+  DATA.bench.forEach(function (p) {
+    var tr = document.createElement("tr");
+    var statusTag = p.status ? '<span class="tag warn">' + p.status + '</span>' : "";
+    tr.innerHTML =
+      '<td>' + p.name + statusTag + '</td>' +
+      '<td>' + p.pos + '</td>' +
+      '<td>' + (p.team || "—") + '</td>' +
+      '<td class="proj-cell">' + (p.proj || "—") + '</td>';
+    benchBody.appendChild(tr);
+  });
+
+  var waiverBox = document.getElementById("waiverBox");
+  DATA.waiver_order.forEach(function (pos) {
+    var need = DATA.need[pos] || "ok";
+    var group = document.createElement("div");
+    group.className = "waiver-group";
+    var h3 = document.createElement("h3");
+    h3.innerHTML = pos + '<span class="tag ' + need + '">' + need + '</span>';
+    group.appendChild(h3);
+
+    var wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    var table = document.createElement("table");
+    table.innerHTML = '<thead><tr><th>Player</th><th>Team</th><th>Owned</th><th>Proj</th></tr></thead>';
+    var tbody = document.createElement("tbody");
+    var list = DATA.waivers[pos] || [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-style:italic;">No candidates returned</td></tr>';
+    }
+    list.forEach(function (p) {
+      var tr = document.createElement("tr");
+      var statusTag = p.status ? '<span class="tag warn">' + p.status + '</span>' : "";
+      tr.innerHTML =
+        '<td>' + p.name + statusTag + '</td>' +
+        '<td>' + (p.team || "—") + '</td>' +
+        '<td class="proj-cell">' + p.owned + '</td>' +
+        '<td class="proj-cell">' + p.proj + '</td>';
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    group.appendChild(wrap);
+    waiverBox.appendChild(group);
+  });
+
+  document.getElementById("footerNote").textContent =
+    "Generated " + DATA.generated_at + " from live ESPN league data. Derived analysis only — not a republished rankings table.";
+})();
+</script>
+</body>
+</html>

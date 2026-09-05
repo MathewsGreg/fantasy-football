@@ -9,6 +9,62 @@ that project, just born from the same sessions (a couple of comments
 still point back to its `daily_refresh.ps1` as the pattern this one's
 scheduled-task script follows).
 
+## Status
+
+**Draft board (phase 1): done**, used for the actual 2026 draft. No known issues.
+
+**Weekly report (phase 3): done**, and verified against the real league
+across several rounds of actual data (not just synthetic tests) — the
+ESPN connection, lineup diff, waiver ranking, IR handling, and the
+FantasyPros weekly blend have all been run against real roster/rankings
+data and fixed where reality disagreed with the first assumption:
+
+- ESPN reports a healthy D/ST's `injuryStatus` as `'NORMAL'`, not
+  `'ACTIVE'` or blank — handled in `HEALTHY_STATUSES`
+  (`weekly_report.py`).
+- `league.free_agents(position=...)` needs ESPN's raw label `'D/ST'`
+  (with the slash), not our normalized `'DST'`, or the position filter
+  silently no-ops and returns whatever's highest-owned overall instead
+  — see `ESPN_FREE_AGENT_POSITION`.
+- `box_scores()` (what the lineup/roster comes from) doesn't carry
+  ownership data at all — `percent_owned` comes back `-1` for your own
+  roster from that call. `backfill_percent_owned()` does a separate
+  `player_info()` call to get real values before ranking any moves.
+- A player's `ir_eligible` flag can be `True` even when completely
+  healthy, if your league's IR-slot setting allows any rostered player
+  (not just injured ones) — confirmed on a real healthy player.
+  `move_rationale()` says this plainly rather than implying an injury
+  that isn't there.
+- FantasyPros' weekly rankings appear to exclude players ruled out for
+  the week entirely (a real OUT player was simply absent from the RB
+  file) — expected, not a bug; those players just get no FantasyPros
+  annotation that week.
+
+**Not yet confirmed: the Windows Task Scheduler automation actually
+firing unattended.** `scripts/weekly_refresh.ps1` is written and set up
+per the instructions below, but every run so far has been a manual
+`python weekly_report.py` — the 3x/week scheduled trigger hasn't been
+observed firing on its own yet. Worth checking the first Tuesday/
+Thursday/Sunday after setup: confirm a log appears in
+`%LOCALAPPDATA%\fantasy_football\logs\` and `docs/index.html` updates
+without you touching the machine.
+
+**Open questions, flagged but not acted on:**
+- `positional_need()` counts roster depth without discounting injured
+  players, so a position can read "full" even when its *healthy* depth
+  is thin. Revisit if the need tags feel unhelpful in practice.
+- `MIN_OWNERSHIP_GAP` (5 points) is a judgment call — a real Top
+  Waiver Move landed right at that threshold (defensible, not
+  compelling). Raise it if the list feels too eager.
+- Automating the FantasyPros CSV pull itself (their sanctioned path is
+  a paid personal API key, ~$8.99/mo) was considered and declined in
+  favor of the free manual export. Revisit if that calculus changes.
+
+**For a fresh Claude session picking this up later:** this README plus
+the git log (`git log --oneline`) is the full history and reasoning —
+no other context is needed. Point a new session at
+`mathewsgreg/fantasy-football` and it can start from here.
+
 ## Draft board
 
 A companion tool that turns a FantasyPros consensus-rankings export into

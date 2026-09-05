@@ -25,7 +25,7 @@ def main() -> None:
     me = find_team(league, my_team_name)
     print(f"\n{me.team_name} ({me.wins}-{me.losses}) roster:")
     for p in me.roster:
-        status = f" [{p.injuryStatus}]" if getattr(p, "injuryStatus", "ACTIVE") not in ("ACTIVE", "") else ""
+        status = f" [{p.injuryStatus}]" if getattr(p, "injuryStatus", "ACTIVE") not in ("ACTIVE", "NORMAL", "") else ""
         print(f"  {p.position:>4}  {p.name} ({p.proTeam}){status}")
 
     print("\nTop 15 free agents by ESPN's own ranking:")

@@ -25,8 +25,19 @@ from lineup import RosterPlayer, suggest_lineup, HARD_EXCLUDE_STATUSES
 ROOT = Path(__file__).resolve().parent.parent
 
 
+HEALTHY_STATUSES = {"", "ACTIVE", "NORMAL"}  # ESPN reports a healthy D/ST as
+# 'NORMAL' rather than 'ACTIVE' or blank - confirmed against a real league
+# (a healthy team defense showed up as "[NORMAL]"), so both count as fine.
+
+
 def box_player_to_roster_player(bp) -> RosterPlayer:
-    status = "BYE" if getattr(bp, "on_bye_week", False) else (bp.injuryStatus or "")
+    raw_status = bp.injuryStatus or ""
+    if getattr(bp, "on_bye_week", False):
+        status = "BYE"
+    elif raw_status in HEALTHY_STATUSES:
+        status = ""
+    else:
+        status = raw_status
     return RosterPlayer(
         player_id=str(bp.playerId),
         name=bp.name,
@@ -109,7 +120,7 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
                 "name": p.name, "team": p.proTeam,
                 "owned": f"{p.percent_owned:.0f}%" if getattr(p, "percent_owned", None) is not None else "—",
                 "proj": f"{p.projected_points:.1f}" if getattr(p, "projected_points", None) else "—",
-                "status": "" if (p.injuryStatus or "") in ("ACTIVE", "") else p.injuryStatus,
+                "status": "" if (p.injuryStatus or "") in HEALTHY_STATUSES else p.injuryStatus,
             }
             for p in waiver_targets[pos]
         ]

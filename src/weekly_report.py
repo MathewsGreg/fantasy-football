@@ -207,8 +207,17 @@ def move_rationale(move: dict) -> str:
     if drop.ir_eligible:
         # Your league's own IR rules already qualify this player - stashing
         # him there frees the roster spot for free, so there's no actual
-        # trade-off to name here, unlike a real drop.
-        drop_status = drop.injury_status.replace("_", " ").title() if drop.injury_status else "eligible"
+        # trade-off to name here, unlike a real drop. Say plainly when he's
+        # NOT actually injured (some leagues allow any rostered player into
+        # IR) rather than papering over it with a vague word - confirmed
+        # against a real league where an IR-eligible player had no injury
+        # designation at all, and a generic "is eligible" reads as if he's
+        # hurt when he isn't.
+        if drop.injury_status:
+            drop_clause = f"is {drop.injury_status.replace('_', ' ').title()} and IR-eligible in this league"
+        else:
+            drop_clause = ("isn't actually injured, but your league's IR-slot rules allow "
+                            "any rostered player there anyway")
         if fa_status in ("OUT", "INJURY_RESERVE"):
             fa_clause = f"another season-long stash — he won't play this week ({fa_status.replace('_', ' ').title()}) either"
         elif fa_status:
@@ -217,9 +226,9 @@ def move_rationale(move: dict) -> str:
             fa_clause = "can help as soon as this week"
         return (
             f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned) — {fa_clause}. "
-            f"{drop.name} ({drop_owned:.0f}% owned) is {drop_status} and "
-            f"IR-eligible in this league, so stash him on IR instead of "
-            f"dropping him; that opens the roster spot for {fa.name} at no cost."
+            f"{drop.name} ({drop_owned:.0f}% owned) {drop_clause}, so stash "
+            f"him on IR instead of dropping him; that opens the roster spot "
+            f"for {fa.name} at no cost."
         )
 
     return (

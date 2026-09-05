@@ -86,6 +86,7 @@
     <div class="brand">Weekly Report</div>
     <div class="subhead" id="subhead"></div>
   </div>
+  <div class="subhead" id="fpNote" style="margin-top:2px;"></div>
 
   <h2 style="margin-top:16px;">Top Waiver Moves</h2>
   <div class="changes moves" id="topMovesBox"></div>
@@ -122,6 +123,17 @@
 
   document.getElementById("subhead").textContent =
     DATA.league_name + " — " + DATA.team_name + " — Week " + DATA.week;
+
+  var fpNote = document.getElementById("fpNote");
+  if (!DATA.fp_loaded) {
+    fpNote.textContent = "No FantasyPros data loaded (data/cheatsheet.csv not found) — waiver targets show ESPN ownership only.";
+    fpNote.style.color = "var(--warn)";
+  } else if (DATA.fp_stale_days) {
+    fpNote.textContent = "FantasyPros data is " + DATA.fp_stale_days + " days old — consider re-exporting.";
+    fpNote.style.color = "var(--warn)";
+  } else {
+    fpNote.textContent = "";
+  }
 
   var topMovesBox = document.getElementById("topMovesBox");
   if (DATA.top_moves && DATA.top_moves.length) {
@@ -201,11 +213,11 @@
     var wrap = document.createElement("div");
     wrap.className = "table-wrap";
     var table = document.createElement("table");
-    table.innerHTML = '<thead><tr><th>Player</th><th>Team</th><th>Owned</th><th>Proj</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>Player</th><th>Team</th><th>Owned</th><th>Proj</th><th>FantasyPros</th></tr></thead>';
     var tbody = document.createElement("tbody");
     var list = DATA.waivers[pos] || [];
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-style:italic;">No candidates returned</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);font-style:italic;">No candidates returned</td></tr>';
     }
     list.forEach(function (p) {
       var tr = document.createElement("tr");
@@ -214,7 +226,8 @@
         '<td>' + p.name + statusTag + '</td>' +
         '<td>' + (p.team || "—") + '</td>' +
         '<td class="proj-cell">' + p.owned + '</td>' +
-        '<td class="proj-cell">' + p.proj + '</td>';
+        '<td class="proj-cell">' + p.proj + '</td>' +
+        '<td class="proj-cell">' + (p.fp || "—") + '</td>';
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);

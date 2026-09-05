@@ -3,9 +3,12 @@ rationale) up front, then start/sit suggestions (diffed against your
 actual current ESPN lineup), then ranked waiver-wire targets grouped by
 positional need. Writes docs/index.html for GitHub Pages to serve.
 
-Deliberately doesn't publish FantasyPros' rankings table itself — only
+Deliberately doesn't publish FantasyPros' rankings table wholesale — only
 your own derived roster/lineup/waiver analysis, computed from your real
-ESPN league data. See README's Phase 3 section.
+ESPN league data, annotated with FantasyPros' rank/tier per matched
+player as a second opinion (data/cheatsheet.csv, if present - the same
+manually-refreshed export the draft board uses). See README's Phase 3
+section.
 
 Run via scripts/weekly_refresh.ps1 (Task Scheduler, 3x/week). Every run
 recomputes both sections regardless of which day it is.
@@ -20,6 +23,7 @@ from pathlib import Path
 
 from espn_client import get_league, find_team
 from espn_normalize import normalize_position, normalize_slot
+from fp_blend import load_blend
 from lineup import RosterPlayer, suggest_lineup, HARD_EXCLUDE_STATUSES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -191,7 +195,19 @@ def top_waiver_moves(lineup_result, waiver_order, waiver_targets, max_moves: int
     return moves[:max_moves]
 
 
-def move_rationale(move: dict) -> str:
+def fp_note(name: str, position: str, team: str, blend) -> str:
+    """'#87 (Tier 9)' from the FantasyPros export, or '' if there's no
+    blend loaded or this particular player isn't in it (e.g. a rookie who
+    wasn't ranked yet when you last exported)."""
+    if blend is None:
+        return ""
+    fp_player = blend.lookup(name, position, team)
+    if fp_player is None:
+        return ""
+    return f"#{fp_player.rank} (Tier {fp_player.tier})"
+
+
+def move_rationale(move: dict, blend=None) -> str:
     fa, drop, pos = move["add"], move["drop"], move["pos"]
     fa_status = "" if (fa.injuryStatus or "") in HEALTHY_STATUSES else fa.injuryStatus
     fa_owned = fa.percent_owned or 0
@@ -203,6 +219,15 @@ def move_rationale(move: dict) -> str:
         timing = f"is {fa_status.title()} but could still help this week, and is"
     else:
         timing = "can help as soon as this week, and is"
+
+    fp_bits = []
+    fa_fp = fp_note(fa.name, pos, getattr(fa, "proTeam", ""), blend)
+    if fa_fp:
+        fp_bits.append(f"{fa.name} {fa_fp}")
+    drop_fp = fp_note(drop.name, pos, drop.pro_team, blend)
+    if drop_fp:
+        fp_bits.append(f"{drop.name} {drop_fp}")
+    fp_suffix = f" (FantasyPros: {'; '.join(fp_bits)}.)" if fp_bits else ""
 
     if drop.ir_eligible:
         # Your league's own IR rules already qualify this player - stashing
@@ -228,17 +253,17 @@ def move_rationale(move: dict) -> str:
             f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned) — {fa_clause}. "
             f"{drop.name} ({drop_owned:.0f}% owned) {drop_clause}, so stash "
             f"him on IR instead of dropping him; that opens the roster spot "
-            f"for {fa.name} at no cost."
+            f"for {fa.name} at no cost.{fp_suffix}"
         )
 
     return (
         f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned), drop {drop.name} "
         f"({drop_owned:.0f}% owned) — {timing} the clearly better season-long "
-        f"asset at {pos}."
+        f"asset at {pos}.{fp_suffix}"
     )
 
 
-def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets, top_moves) -> str:
+def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets, top_moves, blend=None) -> str:
     template = (Path(__file__).parent / "report_template.html").read_text()
 
     def player_row(p):
@@ -262,6 +287,7 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
                 "owned": f"{p.percent_owned:.0f}%" if getattr(p, "percent_owned", None) is not None else "—",
                 "proj": f"{p.projected_points:.1f}" if getattr(p, "projected_points", None) else "—",
                 "status": "" if (p.injuryStatus or "") in HEALTHY_STATUSES else p.injuryStatus,
+                "fp": fp_note(p.name, pos, p.proTeam, blend),
             }
             for p in waiver_targets[pos]
         ]
@@ -276,7 +302,9 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         "opponent": opponent.team_name if opponent else None,
         "my_projected": round(my_proj, 1) if my_proj else None,
         "opp_projected": round(opp_proj, 1) if opp_proj else None,
-        "top_moves": [move_rationale(m) for m in top_moves],
+        "fp_loaded": blend is not None,
+        "fp_stale_days": round(blend.age_days) if (blend is not None and blend.stale) else None,
+        "top_moves": [move_rationale(m, blend) for m in top_moves],
         "starters": starters,
         "bench": bench,
         "changes": lineup_result.changes,
@@ -291,6 +319,14 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
 def main() -> None:
     config = json.loads((ROOT / "league_config.json").read_text())
     my_team_name = config["team_names"][config["my_team"] - 1]
+
+    blend = load_blend()
+    if blend is None:
+        print("No data/cheatsheet.csv found - running without the FantasyPros "
+              "second opinion (see README's Phase 1 section to add one).")
+    elif blend.stale:
+        print(f"WARNING: data/cheatsheet.csv is {blend.age_days:.0f} days old - "
+              f"consider re-exporting from FantasyPros (their own refresh cycle is weekly).")
 
     league = get_league()
     me = find_team(league, my_team_name)
@@ -307,7 +343,7 @@ def main() -> None:
 
     html = render_html(
         league.settings.name, me, week, lineup_result, opponent, my_proj, opp_proj,
-        need, waiver_order, waiver_targets, top_moves,
+        need, waiver_order, waiver_targets, top_moves, blend,
     )
 
     out_dir = ROOT / "docs"

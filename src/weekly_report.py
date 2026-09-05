@@ -47,6 +47,10 @@ def box_player_to_roster_player(bp) -> RosterPlayer:
         projected_points=bp.projected_points,
         current_slot=normalize_slot(bp.slot_position),
         percent_owned=getattr(bp, "percent_owned", None),
+        # eligibleSlots already reflects THIS league's IR-slot rules (some
+        # leagues require actual NFL injured reserve, others allow a plain
+        # 'Out' designation, etc.) - ESPN's computed it for us, we just read it.
+        ir_eligible="IR" in getattr(bp, "eligibleSlots", []),
     )
 
 
@@ -199,6 +203,24 @@ def move_rationale(move: dict) -> str:
         timing = f"is {fa_status.title()} but could still help this week, and is"
     else:
         timing = "can help as soon as this week, and is"
+
+    if drop.ir_eligible:
+        # Your league's own IR rules already qualify this player - stashing
+        # him there frees the roster spot for free, so there's no actual
+        # trade-off to name here, unlike a real drop.
+        drop_status = drop.injury_status.replace("_", " ").title() if drop.injury_status else "eligible"
+        if fa_status in ("OUT", "INJURY_RESERVE"):
+            fa_clause = f"another season-long stash — he won't play this week ({fa_status.replace('_', ' ').title()}) either"
+        elif fa_status:
+            fa_clause = f"{fa_status.title()} but could still help this week"
+        else:
+            fa_clause = "can help as soon as this week"
+        return (
+            f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned) — {fa_clause}. "
+            f"{drop.name} ({drop_owned:.0f}% owned) is {drop_status} and "
+            f"IR-eligible in this league, so stash him on IR instead of "
+            f"dropping him; that opens the roster spot for {fa.name} at no cost."
+        )
 
     return (
         f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned), drop {drop.name} "

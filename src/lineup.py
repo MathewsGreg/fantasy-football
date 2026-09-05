@@ -34,6 +34,8 @@ class RosterPlayer:
     current_slot: str  # ESPN's lineupSlot, e.g. 'RB', 'WR', 'BE', 'FLEX', 'IR'
     percent_owned: float | None = None  # league-wide ownership - our proxy for
     # season-long value, independent of this week's health/projection
+    ir_eligible: bool = False  # ESPN's own read of whether THIS league's IR-slot
+    # rules currently qualify this player - not something we compute ourselves
 
     @property
     def currently_starting(self) -> bool:

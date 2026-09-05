@@ -89,14 +89,32 @@ cross-reference against your actual ESPN roster (via the unofficial
 league API below) to flag start/sit risk before lineups lock. Not built
 yet; revisit after the draft.
 
-## Phase 3 (later): waiver-wire recommendations against your league's pool
+## Phase 3: waiver-wire + start/sit against your league's actual pool
 
-ESPN's unofficial fantasy API (used read-only, via libraries like
-`espn_api`) can pull your league's actual free-agent pool, rosters, and
-matchups once authenticated as you. For a private league that means
-grabbing your account's `espn_s2` and `SWID` cookies (from your browser's
-dev tools after logging into ESPN) — there's no OAuth flow, just session
-cookies, so treat them like a password (don't commit them; `.env`,
-gitignored, same pattern as `ODDS_API_KEY` in the MLB project). Combine
-free-agent list + our rankings/VBD + your roster's positional needs to
-rank pickups. Not built yet; revisit after the draft.
+Setup (one time):
+
+1. `pip install -r requirements.txt` (adds `espn_api`, read-only unofficial
+   client for ESPN's fantasy API — never used here for anything but
+   reading your own league).
+2. Copy `.env.example` to `.env` and fill in `ESPN_LEAGUE_ID`,
+   `ESPN_S2`, `ESPN_SWID` (see the comments in that file for exactly
+   where to find each one). `.env` is gitignored — these are session
+   cookies, not an API key, so treat them like a password: never commit
+   them, never paste them anywhere but that file.
+3. `cd src && python3 check_espn_connection.py` — should print your
+   league name, your actual roster (with injury designations), and the
+   top free agents by ESPN's own ranking. Run this before trusting
+   anything built on top of it.
+
+`espn_client.py` matches "your team" by name (`my_team`/`team_names` in
+`league_config.json`) rather than assuming ESPN's internal team ordering
+matches our draft-order numbering — those are two independent things ESPN
+doesn't guarantee line up.
+
+Once the connection's confirmed: combine `league.free_agents()` (ESPN's
+own view of who's actually available in *this* league — no need to
+manually cross-reference FantasyPros' rankings against 10 rosters by
+hand) with the same VORP logic from `vbd.py`, computed against your
+bench's weak spots instead of the whole league, plus FantasyPros' weekly
+(not draft) rankings for a second opinion. Not built yet — next step
+after the connection check passes.

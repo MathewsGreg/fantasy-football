@@ -1,7 +1,7 @@
 """Generates the public weekly report: start/sit suggestions (diffed
 against your actual current ESPN lineup) and ranked waiver-wire targets
-grouped by positional need. Writes docs/fantasy/index.html for GitHub
-Pages to serve alongside the MLB dashboard.
+grouped by positional need. Writes docs/index.html for GitHub Pages to
+serve.
 
 Deliberately doesn't publish FantasyPros' rankings table itself — only
 your own derived roster/lineup/waiver analysis, computed from your real
@@ -23,7 +23,6 @@ from espn_normalize import normalize_position, normalize_slot
 from lineup import RosterPlayer, suggest_lineup, HARD_EXCLUDE_STATUSES
 
 ROOT = Path(__file__).resolve().parent.parent
-REPO_ROOT = ROOT.parent
 
 
 def box_player_to_roster_player(bp) -> RosterPlayer:
@@ -156,7 +155,7 @@ def main() -> None:
         need, waiver_order, waiver_targets,
     )
 
-    out_dir = REPO_ROOT / "docs" / "fantasy"
+    out_dir = ROOT / "docs"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "index.html"
     out_path.write_text(html)

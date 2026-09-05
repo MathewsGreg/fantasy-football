@@ -1,8 +1,8 @@
 """Thin wrapper around the unofficial `espn_api` library for read-only
 access to our league: your roster, the actual free-agent pool, and
 matchups. No write access is used or attempted anywhere in here (see
-fantasy-football/README.md for why: there's no documented, reliable write
-endpoint for anything in ESPN's fantasy API, so this only ever reads).
+README.md for why: there's no documented, reliable write endpoint for
+anything in ESPN's fantasy API, so this only ever reads).
 
 Auth is your ESPN login session (espn_s2 / SWID cookies), not an API key —
 treat it like a password. Loaded from a gitignored .env; see .env.example.
@@ -36,14 +36,14 @@ def get_league(year: int | None = None) -> League:
     swid = os.environ.get("ESPN_SWID")
     if not league_id:
         raise SystemExit(
-            "ESPN_LEAGUE_ID not set. Copy fantasy-football/.env.example to "
-            "fantasy-football/.env and fill in your league ID + cookies."
+            "ESPN_LEAGUE_ID not set. Copy .env.example to .env and fill in "
+            "your league ID + cookies."
         )
     if not espn_s2 or not swid:
         raise SystemExit(
             "ESPN_S2 / ESPN_SWID not set (needed for a private league). "
-            "Fill them in in fantasy-football/.env — see .env.example for "
-            "where to find them in your browser's cookies."
+            "Fill them in in .env — see .env.example for where to find "
+            "them in your browser's cookies."
         )
     if year is None:
         import datetime

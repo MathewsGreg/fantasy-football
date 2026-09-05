@@ -1,15 +1,15 @@
 # Weekly fantasy report: pull live ESPN roster/free-agent data, regenerate
-# docs/fantasy/index.html (start/sit + waiver targets), publish if changed.
+# docs/index.html (start/sit + waiver targets), publish if changed.
 # Run by three Windows Task Scheduler triggers (Tue/Thu 9am, Sun 11am -
-# see fantasy-football/README.md for exact setup). Safe to run more often
-# than that; it just regenerates the same report from whatever ESPN
-# returns at the time.
+# see README.md for exact setup). Safe to run more often than that; it
+# just regenerates the same report from whatever ESPN returns at the time.
 #
-# Mirrors scripts/daily_refresh.ps1's structure (repo path, log file,
-# branch guard, commit-only-if-changed) - see that file for the reasoning
-# behind each piece.
+# Structure (repo path, log file, branch guard, commit-only-if-changed,
+# abort loudly rather than push something broken) borrowed from the
+# sibling MLB Elo project's daily_refresh.ps1, which uses the same
+# pattern for its own scheduled GitHub Pages publish.
 
-$Repo = "C:\Users\Diggs\Dropbox\PC\Documents\Claude\mlb_elo"
+$Repo = "C:\Users\Diggs\Dropbox\PC\Documents\Claude\fantasy_football"
 $Python = "C:\Users\Diggs\venvs\fantasy_football\Scripts\python.exe"
 $Git = "C:\Program Files\Git\cmd\git.exe"
 
@@ -26,12 +26,12 @@ Set-Location $Repo
 Log "Starting weekly fantasy refresh in $Repo"
 
 $CurrentBranch = & $Git rev-parse --abbrev-ref HEAD
-if ($CurrentBranch -ne "master") {
-    Log "FAILED: repo is on branch '$CurrentBranch', not master - aborting so this doesn't land on a stray branch unnoticed (see daily_refresh.ps1's comment for why this guard exists). Run 'git checkout master' in $Repo and re-run this script."
+if ($CurrentBranch -ne "main") {
+    Log "FAILED: repo is on branch '$CurrentBranch', not main - aborting so this doesn't land on a stray branch unnoticed (GitHub Pages only serves main). Run 'git checkout main' in $Repo and re-run this script."
     exit 1
 }
 
-Set-Location "$Repo\fantasy-football\src"
+Set-Location "$Repo\src"
 Log "--- weekly_report.py ---"
 & $Python weekly_report.py *>> $LogFile
 if ($LASTEXITCODE -ne 0) {
@@ -40,14 +40,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Set-Location $Repo
-$changes = & $Git status --porcelain docs/fantasy/index.html
+$changes = & $Git status --porcelain docs/index.html
 if (-not $changes) {
-    Log "No change in docs/fantasy/index.html - nothing to commit. Done."
+    Log "No change in docs/index.html - nothing to commit. Done."
     exit 0
 }
 
-Log "Committing and pushing docs/fantasy/index.html"
-& $Git add docs/fantasy/index.html *>> $LogFile
+Log "Committing and pushing docs/index.html"
+& $Git add docs/index.html *>> $LogFile
 $dateStr = Get-Date -Format "yyyy-MM-dd HH:mm"
 & $Git commit -m "Automated weekly fantasy refresh: $dateStr" *>> $LogFile
 if ($LASTEXITCODE -ne 0) {

@@ -83,6 +83,14 @@ def positional_need(roster: list[RosterPlayer], targets: dict) -> dict[str, str]
     return need
 
 
+# espn_api's free_agents(position=...) matches against its own POSITION_MAP
+# keys, which use ESPN's raw labels ('D/ST', not our normalized 'DST') -
+# confirmed against a real league: passing 'DST' silently matched nothing,
+# the slot filter fell through, and the "DST" group came back full of
+# whatever's highest-owned overall (mostly WRs) instead of actual defenses.
+ESPN_FREE_AGENT_POSITION = {"DST": "D/ST"}
+
+
 def rank_waiver_targets(league, need: dict, size_per_position: int = 8):
     positions = ["QB", "RB", "WR", "TE", "K", "DST"]
     # Positions you're short on first, then ok, then full - a real
@@ -91,7 +99,8 @@ def rank_waiver_targets(league, need: dict, size_per_position: int = 8):
 
     targets = {}
     for pos in order:
-        candidates = league.free_agents(week=league.current_week, size=200, position=pos)
+        espn_pos = ESPN_FREE_AGENT_POSITION.get(pos, pos)
+        candidates = league.free_agents(week=league.current_week, size=200, position=espn_pos)
         candidates.sort(key=lambda p: -(p.percent_owned or 0))
         targets[pos] = candidates[:size_per_position]
     return order, targets

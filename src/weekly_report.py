@@ -1,7 +1,7 @@
-"""Generates the public weekly report: start/sit suggestions (diffed
-against your actual current ESPN lineup) and ranked waiver-wire targets
-grouped by positional need. Writes docs/index.html for GitHub Pages to
-serve.
+"""Generates the public weekly report: top waiver add/drop moves (with
+rationale) up front, then start/sit suggestions (diffed against your
+actual current ESPN lineup), then ranked waiver-wire targets grouped by
+positional need. Writes docs/index.html for GitHub Pages to serve.
 
 Deliberately doesn't publish FantasyPros' rankings table itself — only
 your own derived roster/lineup/waiver analysis, computed from your real
@@ -46,6 +46,7 @@ def box_player_to_roster_player(bp) -> RosterPlayer:
         injury_status=status,
         projected_points=bp.projected_points,
         current_slot=normalize_slot(bp.slot_position),
+        percent_owned=getattr(bp, "percent_owned", None),
     )
 
 
@@ -91,7 +92,14 @@ def positional_need(roster: list[RosterPlayer], targets: dict) -> dict[str, str]
 ESPN_FREE_AGENT_POSITION = {"DST": "D/ST"}
 
 
-def rank_waiver_targets(league, need: dict, size_per_position: int = 8):
+# How deep to look per position: RB/WR are scarce and swing seasons, so we
+# look deeper (including hurt/IR stashes worth grabbing for later); QB/TE/K/DST
+# are thin and mostly interchangeable past the top few, so a short list is
+# plenty and keeps the report from being cluttered with noise.
+DEFAULT_WAIVER_DEPTH = {"QB": 5, "RB": 10, "WR": 10, "TE": 5, "K": 5, "DST": 5}
+
+
+def rank_waiver_targets(league, need: dict, depth: dict = DEFAULT_WAIVER_DEPTH):
     positions = ["QB", "RB", "WR", "TE", "K", "DST"]
     # Positions you're short on first, then ok, then full - a real
     # grouping (need), not a fake single cross-position score.
@@ -100,13 +108,80 @@ def rank_waiver_targets(league, need: dict, size_per_position: int = 8):
     targets = {}
     for pos in order:
         espn_pos = ESPN_FREE_AGENT_POSITION.get(pos, pos)
+        # Ranked by percent_owned - the wider fantasy market's read of
+        # season-long value - not this week's projection, so an elite
+        # player who's OUT/IR this week still surfaces as a stash target
+        # rather than getting buried under healthy scrubs.
         candidates = league.free_agents(week=league.current_week, size=200, position=espn_pos)
         candidates.sort(key=lambda p: -(p.percent_owned or 0))
-        targets[pos] = candidates[:size_per_position]
+        targets[pos] = candidates[:depth.get(pos, 8)]
     return order, targets
 
 
-def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets) -> str:
+# Minimum ownership-percentage gap between a free agent and your weakest
+# same-position bench player before we bother suggesting the swap - keeps
+# this list to moves that are actually worth the trouble, not noise from a
+# 2-point ownership difference.
+MIN_OWNERSHIP_GAP = 5.0
+
+
+def top_waiver_moves(lineup_result, waiver_order, waiver_targets, max_moves: int = 5):
+    """Best add/drop pairings: for each position, compare the top-owned
+    available free agent against your weakest BENCH player at that same
+    position (never a starter) by percent_owned - our season-value proxy.
+    Deliberately doesn't require the free agent to be healthy *this week*:
+    a hurt/IR player who's still clearly the better season-long asset than
+    what you'd drop is exactly the stash-worthy move the ownership-based
+    ranking is meant to surface."""
+    bench_by_pos: dict[str, list] = {}
+    for p in lineup_result.bench:
+        bench_by_pos.setdefault(p.position, []).append(p)
+
+    moves = []
+    for pos in waiver_order:
+        bench_list = bench_by_pos.get(pos)
+        if not bench_list:
+            continue  # nothing droppable at this position - nothing to suggest
+        weakest = min(bench_list, key=lambda p: p.percent_owned if p.percent_owned is not None else -1)
+        weakest_owned = weakest.percent_owned or 0
+
+        best_fa = None
+        for fa in waiver_targets.get(pos, []):
+            fa_owned = fa.percent_owned or 0
+            if fa_owned - weakest_owned >= MIN_OWNERSHIP_GAP:
+                best_fa = fa
+                break  # list is already sorted by ownership - first hit wins
+        if best_fa is not None:
+            moves.append({
+                "pos": pos, "add": best_fa, "drop": weakest,
+                "gap": (best_fa.percent_owned or 0) - weakest_owned,
+            })
+
+    moves.sort(key=lambda m: -m["gap"])
+    return moves[:max_moves]
+
+
+def move_rationale(move: dict) -> str:
+    fa, drop, pos = move["add"], move["drop"], move["pos"]
+    fa_status = "" if (fa.injuryStatus or "") in HEALTHY_STATUSES else fa.injuryStatus
+    fa_owned = fa.percent_owned or 0
+    drop_owned = drop.percent_owned or 0
+
+    if fa_status in ("OUT", "INJURY_RESERVE"):
+        timing = f"won't help this week ({fa_status.replace('_', ' ').title()}), but is"
+    elif fa_status:
+        timing = f"is {fa_status.title()} but could still help this week, and is"
+    else:
+        timing = "can help as soon as this week, and is"
+
+    return (
+        f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned), drop {drop.name} "
+        f"({drop_owned:.0f}% owned) — {timing} the clearly better season-long "
+        f"asset at {pos}."
+    )
+
+
+def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets, top_moves) -> str:
     template = (Path(__file__).parent / "report_template.html").read_text()
 
     def player_row(p):
@@ -144,6 +219,7 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         "opponent": opponent.team_name if opponent else None,
         "my_projected": round(my_proj, 1) if my_proj else None,
         "opp_projected": round(opp_proj, 1) if opp_proj else None,
+        "top_moves": [move_rationale(m) for m in top_moves],
         "starters": starters,
         "bench": bench,
         "changes": lineup_result.changes,
@@ -169,10 +245,11 @@ def main() -> None:
 
     need = positional_need(roster, config["my_roster_targets"])
     waiver_order, waiver_targets = rank_waiver_targets(league, need)
+    top_moves = top_waiver_moves(lineup_result, waiver_order, waiver_targets)
 
     html = render_html(
         league.settings.name, me, week, lineup_result, opponent, my_proj, opp_proj,
-        need, waiver_order, waiver_targets,
+        need, waiver_order, waiver_targets, top_moves,
     )
 
     out_dir = ROOT / "docs"

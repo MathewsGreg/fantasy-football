@@ -132,6 +132,24 @@ position — grouped by whether that position is short/ok/full against
 `docs/index.html` — **deliberately doesn't publish FantasyPros' rankings
 table itself**, only this derived analysis from your own live league data.
 
+The page opens with **Top Waiver Moves**: up to 5 explicit add/drop
+pairings (add this free agent, drop this bench player), each with a
+one-line rationale, ranked by the ownership-percentage gap between the
+two. Free agents are ranked by `percent_owned` — the wider market's read
+of season-long value — rather than this week's projection, so a hurt or
+IR player who's still clearly the better long-term asset than your
+weakest bench player at that position surfaces as a stash recommendation
+even though he can't play this week; the rationale says so explicitly
+either way. If nothing clears a small minimum ownership gap
+(`MIN_OWNERSHIP_GAP`, currently 5 points — enough to filter out noise
+without being so strict it hides real opportunities), it says there's
+nothing worth doing rather than manufacturing a move.
+
+Waiver Targets by position go 10 deep for RB/WR (scarce, season-swinging
+positions worth digging into, injured stashes included) and 5 deep for
+QB/TE/K/DST (thin, mostly interchangeable past the top few) —
+`DEFAULT_WAIVER_DEPTH` in `weekly_report.py` if you want to change that.
+
 Run it directly: `cd src && python3 weekly_report.py`.
 
 ### Publishing it (GitHub Pages, one-time)

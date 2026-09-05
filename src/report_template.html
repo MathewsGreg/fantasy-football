@@ -87,6 +87,9 @@
     <div class="subhead" id="subhead"></div>
   </div>
 
+  <h2 style="margin-top:16px;">Top Waiver Moves</h2>
+  <div class="changes moves" id="topMovesBox"></div>
+
   <div class="matchup" id="matchupBox"></div>
 
   <h2>This Week's Lineup</h2>
@@ -119,6 +122,22 @@
 
   document.getElementById("subhead").textContent =
     DATA.league_name + " — " + DATA.team_name + " — Week " + DATA.week;
+
+  var topMovesBox = document.getElementById("topMovesBox");
+  if (DATA.top_moves && DATA.top_moves.length) {
+    var ol = document.createElement("ol");
+    ol.style.margin = "0";
+    ol.style.paddingLeft = "18px";
+    DATA.top_moves.forEach(function (m) {
+      var li = document.createElement("li");
+      li.style.margin = "4px 0";
+      li.textContent = m;
+      ol.appendChild(li);
+    });
+    topMovesBox.appendChild(ol);
+  } else {
+    topMovesBox.innerHTML = '<div class="none">No waiver moves clearly worth making this week — nothing available beats your bench by enough to be worth a roster spot.</div>';
+  }
 
   var matchupBox = document.getElementById("matchupBox");
   if (DATA.opponent) {

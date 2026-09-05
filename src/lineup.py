@@ -32,6 +32,8 @@ class RosterPlayer:
     injury_status: str  # '' / ACTIVE / QUESTIONABLE / DOUBTFUL / OUT / INJURY_RESERVE / ...
     projected_points: float | None
     current_slot: str  # ESPN's lineupSlot, e.g. 'RB', 'WR', 'BE', 'FLEX', 'IR'
+    percent_owned: float | None = None  # league-wide ownership - our proxy for
+    # season-long value, independent of this week's health/projection
 
     @property
     def currently_starting(self) -> bool:

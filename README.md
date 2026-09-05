@@ -150,6 +150,28 @@ positions worth digging into, injured stashes included) and 5 deep for
 QB/TE/K/DST (thin, mostly interchangeable past the top few) —
 `DEFAULT_WAIVER_DEPTH` in `weekly_report.py` if you want to change that.
 
+### FantasyPros second opinion
+
+If `data/cheatsheet.csv` is present (the same export the draft board
+uses — re-export it Tuesdays to match FantasyPros' own weekly refresh;
+see Phase 1's Setup above), `fp_blend.py` matches it against every
+player ESPN shows you by name (or team abbreviation for DST, since
+ESPN says "Texans D/ST" and FantasyPros says "Houston Texans") and adds
+a FantasyPros rank/tier column next to every Waiver Target, plus a note
+on each Top Waiver Move. Deliberately **not fused into one score** with
+`percent_owned` — they're different scales (a market ownership
+percentage vs. an expert-consensus rank), and forcing them together
+would hide real disagreement between the two instead of showing it. If
+the CSV is missing or more than `STALE_AFTER_DAYS` (8) old, the report
+says so plainly rather than silently running on stale or absent data.
+
+Automating the CSV pull itself was considered and deliberately skipped:
+FantasyPros' free page export is built for a person to click, not a
+script to hit unattended, and their sanctioned path for that (a real
+public API with a personal tier, ~$8.99/mo) costs money for something
+that already works as a 30-second manual step. Revisit if that
+calculus changes.
+
 Run it directly: `cd src && python3 weekly_report.py`.
 
 ### Publishing it (GitHub Pages, one-time)

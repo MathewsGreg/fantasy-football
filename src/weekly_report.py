@@ -62,6 +62,30 @@ def find_my_lineup(league, me):
     raise ValueError(f"No matchup found for {me.team_name} in week {league.current_week} (bye week?)")
 
 
+def backfill_percent_owned(league, roster: list[RosterPlayer]) -> None:
+    """box_scores() doesn't carry ownership data - confirmed against a real
+    league, every roster player came back with percent_owned == -1 (the
+    library's sentinel for 'ownership field missing from this API
+    response'), which made every early waiver-move recommendation compare
+    real free agents against fake near-zero values. player_info() hits a
+    different view (kona_playercard) that does include it. Mutates roster
+    in place; leaves percent_owned alone (as whatever box_scores gave it -
+    almost certainly still -1) for any player this lookup can't resolve,
+    rather than fabricating a number."""
+    ids = [int(p.player_id) for p in roster]
+    if not ids:
+        return
+    result = league.player_info(playerId=ids)
+    if result is None:
+        return
+    players = result if isinstance(result, list) else [result]
+    owned_by_id = {str(p.playerId): p.percent_owned for p in players if getattr(p, "percent_owned", None) is not None}
+    for p in roster:
+        owned = owned_by_id.get(p.player_id)
+        if owned is not None and owned >= 0:
+            p.percent_owned = owned
+
+
 def positional_need(roster: list[RosterPlayer], targets: dict) -> dict[str, str]:
     """'short' / 'ok' / 'full' per position, from current roster depth vs
     my_roster_targets. Informational grouping, not a hard cutoff."""
@@ -143,7 +167,9 @@ def top_waiver_moves(lineup_result, waiver_order, waiver_targets, max_moves: int
         if not bench_list:
             continue  # nothing droppable at this position - nothing to suggest
         weakest = min(bench_list, key=lambda p: p.percent_owned if p.percent_owned is not None else -1)
-        weakest_owned = weakest.percent_owned or 0
+        weakest_owned = weakest.percent_owned
+        if weakest_owned is None or weakest_owned < 0:
+            continue  # ownership never resolved for this player - don't guess
 
         best_fa = None
         for fa in waiver_targets.get(pos, []):
@@ -241,6 +267,7 @@ def main() -> None:
 
     lineup_bp, opponent, my_proj, opp_proj = find_my_lineup(league, me)
     roster = [box_player_to_roster_player(bp) for bp in lineup_bp]
+    backfill_percent_owned(league, roster)
     lineup_result = suggest_lineup(roster, config["roster_slots"], config["flex_eligible"])
 
     need = positional_need(roster, config["my_roster_targets"])

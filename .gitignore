@@ -4,10 +4,11 @@ __pycache__/
 *.egg-info/
 .env
 
-# Your real FantasyPros export and the board built from it aren't
+# Your real FantasyPros exports and the board built from them aren't
 # committed (their rankings are FantasyPros' content, and the built
 # board embeds your live draft picks) - the sample data + template are.
 data/cheatsheet.csv
+data/weekly/*.csv
 site/draft_board.html
 
 # docs/index.html (the weekly report) is NOT ignored - that one's meant

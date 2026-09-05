@@ -5,10 +5,9 @@ positional need. Writes docs/index.html for GitHub Pages to serve.
 
 Deliberately doesn't publish FantasyPros' rankings table wholesale — only
 your own derived roster/lineup/waiver analysis, computed from your real
-ESPN league data, annotated with FantasyPros' rank/tier per matched
-player as a second opinion (data/cheatsheet.csv, if present - the same
-manually-refreshed export the draft board uses). See README's Phase 3
-section.
+ESPN league data, annotated with FantasyPros' weekly rank/grade/projection
+per matched player as a second opinion (data/weekly/*.csv, if present).
+See README's Phase 3 section.
 
 Run via scripts/weekly_refresh.ps1 (Task Scheduler, 3x/week). Every run
 recomputes both sections regardless of which day it is.
@@ -196,15 +195,22 @@ def top_waiver_moves(lineup_result, waiver_order, waiver_targets, max_moves: int
 
 
 def fp_note(name: str, position: str, team: str, blend) -> str:
-    """'#87 (Tier 9)' from the FantasyPros export, or '' if there's no
-    blend loaded or this particular player isn't in it (e.g. a rookie who
-    wasn't ranked yet when you last exported)."""
+    """'RB7 (A, 15.9 pts)' from FantasyPros' weekly rankings - position
+    rank, their own start/sit grade, and their projection - or '' if
+    there's no blend loaded or this player isn't in it (e.g. that
+    position's file wasn't downloaded, or he wasn't ranked)."""
     if blend is None:
         return ""
     fp_player = blend.lookup(name, position, team)
     if fp_player is None:
         return ""
-    return f"#{fp_player.rank} (Tier {fp_player.tier})"
+    extras = []
+    if fp_player.grade:
+        extras.append(fp_player.grade)
+    if fp_player.proj_fpts is not None:
+        extras.append(f"{fp_player.proj_fpts:.1f} pts")
+    suffix = f" ({', '.join(extras)})" if extras else ""
+    return f"{position}{fp_player.rank}{suffix}"
 
 
 def move_rationale(move: dict, blend=None) -> str:
@@ -322,10 +328,10 @@ def main() -> None:
 
     blend = load_blend()
     if blend is None:
-        print("No data/cheatsheet.csv found - running without the FantasyPros "
-              "second opinion (see README's Phase 1 section to add one).")
+        print("No data/weekly/*.csv found - running without the FantasyPros "
+              "second opinion (see README's Phase 3 section to add one).")
     elif blend.stale:
-        print(f"WARNING: data/cheatsheet.csv is {blend.age_days:.0f} days old - "
+        print(f"WARNING: your oldest data/weekly/*.csv file is {blend.age_days:.0f} days old - "
               f"consider re-exporting from FantasyPros (their own refresh cycle is weekly).")
 
     league = get_league()

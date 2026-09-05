@@ -152,18 +152,35 @@ QB/TE/K/DST (thin, mostly interchangeable past the top few) —
 
 ### FantasyPros second opinion
 
-If `data/cheatsheet.csv` is present (the same export the draft board
-uses — re-export it Tuesdays to match FantasyPros' own weekly refresh;
-see Phase 1's Setup above), `fp_blend.py` matches it against every
-player ESPN shows you by name (or team abbreviation for DST, since
-ESPN says "Texans D/ST" and FantasyPros says "Houston Texans") and adds
-a FantasyPros rank/tier column next to every Waiver Target, plus a note
+Unlike the draft-day export (one combined "ALL positions" file),
+FantasyPros' *weekly* rankings are one page per position with no
+combined download, and the "Flex" page (which does combine RB/WR/TE)
+mixes them into one cross-position order rather than giving each
+player's rank within their own position — not what we want here. So:
+download each position separately from FantasyPros' weekly rankings
+(as many as you care about — any subset is fine, missing ones just mean
+no second opinion for that position):
+
+1. For each of QB, RB, WR, TE, K, DST: open that position's weekly
+   rankings page on FantasyPros, export to CSV.
+2. Rename each to exactly `qb.csv`, `rb.csv`, `wr.csv`, `te.csv`,
+   `k.csv`, `dst.csv` and drop them all in `data/weekly/` (create the
+   folder if it doesn't exist — gitignored, same reasoning as the draft
+   board's `cheatsheet.csv`).
+
+`fp_blend.py` reads whichever of those six files are present (position
+comes from the filename — the weekly export has no POS column, since
+each file's already one position) and matches every player ESPN shows
+you by name, or by team abbreviation for DST (ESPN says "Texans D/ST",
+FantasyPros says "Houston Texans" — matching on team code sidesteps
+that). Adds a FantasyPros column (position rank, their own start/sit
+grade, their point projection) next to every Waiver Target, plus a note
 on each Top Waiver Move. Deliberately **not fused into one score** with
-`percent_owned` — they're different scales (a market ownership
-percentage vs. an expert-consensus rank), and forcing them together
-would hide real disagreement between the two instead of showing it. If
-the CSV is missing or more than `STALE_AFTER_DAYS` (8) old, the report
-says so plainly rather than silently running on stale or absent data.
+`percent_owned` — different scales, and forcing them together would
+hide real disagreement between the two instead of showing it. If no
+files are present, or the oldest one is more than `STALE_AFTER_DAYS`
+(8) old, the report says so plainly rather than silently running on
+stale or absent data.
 
 Automating the CSV pull itself was considered and deliberately skipped:
 FantasyPros' free page export is built for a person to click, not a

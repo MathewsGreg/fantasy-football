@@ -126,7 +126,7 @@
 
   var fpNote = document.getElementById("fpNote");
   if (!DATA.fp_loaded) {
-    fpNote.textContent = "No FantasyPros data loaded (data/cheatsheet.csv not found) — waiver targets show ESPN ownership only.";
+    fpNote.textContent = "No FantasyPros data loaded (no files in data/weekly/) — waiver targets show ESPN ownership only.";
     fpNote.style.color = "var(--warn)";
   } else if (DATA.fp_stale_days) {
     fpNote.textContent = "FantasyPros data is " + DATA.fp_stale_days + " days old — consider re-exporting.";

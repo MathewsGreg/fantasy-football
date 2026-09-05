@@ -331,8 +331,10 @@ def main() -> None:
         print("No data/weekly/*.csv found - running without the FantasyPros "
               "second opinion (see README's Phase 3 section to add one).")
     elif blend.stale:
-        print(f"WARNING: your oldest data/weekly/*.csv file is {blend.age_days:.0f} days old - "
-              f"consider re-exporting from FantasyPros (their own refresh cycle is weekly).")
+        print(f"WARNING: your oldest currently-used FantasyPros position file is "
+              f"{blend.age_days:.0f} days old - consider re-exporting from FantasyPros "
+              f"(their own refresh cycle is weekly). Old weeks already archived in "
+              f"data/weekly/ don't count against this, only whichever week is newest per position.")
 
     league = get_league()
     me = find_team(league, my_team_name)

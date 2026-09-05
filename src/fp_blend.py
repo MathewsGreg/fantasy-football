@@ -3,21 +3,26 @@ players, as a second opinion alongside ESPN's own percent_owned/proj.
 
 Unlike the draft-day export (one combined file, data/cheatsheet.csv),
 FantasyPros' weekly product is split one page per position with no
-combined "ALL" download - so this reads up to six separate files from
-data/weekly/ (qb.csv, rb.csv, wr.csv, te.csv, k.csv, dst.csv), any
-subset of which can be present; missing ones just mean no FantasyPros
-data for that position rather than an error. Position comes from the
-filename, not a column - the weekly export doesn't have a POS column at
-all, since each file is already one position.
+combined "ALL" download - so this reads whatever position files are in
+data/weekly/. No renaming needed: it reads FantasyPros' own download
+filenames as-is (e.g. "FantasyPros_2026_Week_1_RB_Rankings.csv"),
+pulling the position and week number straight out of the filename -
+the weekly export has no POS column at all, since each file's already
+one position, and no year/week column either.
+
+This means data/weekly/ doubles as a permanent archive: just keep
+dropping each week's new downloads in without deleting anything, and
+the loader always picks the newest (year, week) file per position and
+ignores older ones. A "Flex" file (FantasyPros' RB/WR/TE-combined page)
+sitting in the same folder is harmless - its filename doesn't match any
+of our six real positions, so it's silently ignored; its ranks mix
+positions together anyway and wouldn't be usable for "this player's WR
+rank" the way we need.
 
 Deliberately doesn't fuse ESPN's percent_owned/points and FantasyPros'
 rank/grade/projection into one score - different scales, and forcing
 them together would hide real disagreement between the two instead of
 surfacing it. Shown side by side; you judge.
-
-Manual refresh: download each position's CSV from FantasyPros' weekly
-rankings pages, rename to <position>.csv, drop in data/weekly/ (see
-README's Phase 3 section) - nothing here fetches automatically.
 """
 
 from __future__ import annotations
@@ -31,16 +36,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WEEKLY_DIR = ROOT / "data" / "weekly"
 
-# Filename (without .csv) -> the position it holds. Lowercase to match
-# how you'll actually save these; rename whatever FantasyPros calls the
-# download (e.g. "FantasyPros_2026_Week_1_RB_Rankings.csv") to rb.csv.
-POSITION_FILES = {"qb": "QB", "rb": "RB", "wr": "WR", "te": "TE", "k": "K", "dst": "DST"}
+_KNOWN_POSITIONS = {"QB": "QB", "RB": "RB", "WR": "WR", "TE": "TE", "K": "K", "DST": "DST", "DEF": "DST"}
 
 # Re-export sooner than this and the blend is probably still fine; past it,
 # flag it - FantasyPros' own weekly refresh cycle is Tuesday, so a week-plus
 # means you've likely missed at least one refresh. Measured from whichever
-# position file is OLDEST, so forgetting to refresh just one position still
-# gets flagged.
+# CURRENTLY-SELECTED (newest per position) file is oldest, so forgetting to
+# refresh just one position still gets flagged - old archived weeks sitting
+# in the folder don't count against this.
 STALE_AFTER_DAYS = 8
 
 _SUFFIX_RE = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b\.?")
@@ -87,9 +90,29 @@ def _build_header_map(fieldnames: list[str]) -> dict[str, str]:
     return resolved
 
 
+def parse_filename(path: Path) -> tuple[str, int, int] | None:
+    """('RB', 2026, 1) from 'FantasyPros_2026_Week_1_RB_Rankings.csv', or
+    None if this doesn't look like one of our six position files (e.g. a
+    Flex export, or an unrelated CSV someone dropped in the folder)."""
+    tokens = re.split(r"[^A-Za-z0-9]+", path.stem.upper())
+    position = None
+    year = None
+    week = None
+    for i, tok in enumerate(tokens):
+        if tok in _KNOWN_POSITIONS and position is None:
+            position = _KNOWN_POSITIONS[tok]
+        elif tok == "WEEK" and i + 1 < len(tokens) and tokens[i + 1].isdigit():
+            week = int(tokens[i + 1])
+        elif tok.isdigit() and len(tok) == 4 and year is None:
+            year = int(tok)
+    if position is None:
+        return None
+    return position, (year or 0), (week or 0)
+
+
 @dataclass
 class WeeklyRank:
-    position: str  # from the filename, not a column
+    position: str
     rank: int  # rank within this position
     player: str
     team: str
@@ -157,22 +180,32 @@ def load_blend(weekly_dir: Path = WEEKLY_DIR) -> FantasyProsBlend | None:
     if not weekly_dir.exists():
         return None
 
+    # Pick the newest (year, week) file per position - ties broken by
+    # mtime - so data/weekly/ can just accumulate every week's downloads
+    # forever without anything needing to be deleted or renamed.
+    best_by_position: dict[str, tuple[tuple[int, int, float], Path]] = {}
+    for path in weekly_dir.glob("*.csv"):
+        parsed = parse_filename(path)
+        if parsed is None:
+            continue  # not one of our six positions (e.g. a Flex export) - ignore
+        position, year, week = parsed
+        sort_key = (year, week, path.stat().st_mtime)
+        current = best_by_position.get(position)
+        if current is None or sort_key > current[0]:
+            best_by_position[position] = (sort_key, path)
+
+    if not best_by_position:
+        return None
+
     by_name_pos, by_team_dst = {}, {}
     mtimes = []
-    for stem, position in POSITION_FILES.items():
-        path = weekly_dir / f"{stem}.csv"
-        if not path.exists():
-            continue
-        mtimes.append(path.stat().st_mtime)
+    for position, (sort_key, path) in best_by_position.items():
+        mtimes.append(sort_key[2])
         for wr in _load_weekly_csv(path, position):
             if position == "DST":
                 by_team_dst[wr.team.upper()] = wr
             else:
                 by_name_pos[(normalize_name(wr.player), position)] = wr
 
-    if not mtimes:
-        return None
-    # Oldest present file, not newest - forgetting to refresh just one
-    # position should still trip the staleness flag.
     age_days = (datetime.now(timezone.utc).timestamp() - min(mtimes)) / 86400
     return FantasyProsBlend(by_name_pos, by_team_dst, age_days)

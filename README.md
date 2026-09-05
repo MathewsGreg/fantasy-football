@@ -159,28 +159,33 @@ mixes them into one cross-position order rather than giving each
 player's rank within their own position — not what we want here. So:
 download each position separately from FantasyPros' weekly rankings
 (as many as you care about — any subset is fine, missing ones just mean
-no second opinion for that position):
+no second opinion for that position).
 
-1. For each of QB, RB, WR, TE, K, DST: open that position's weekly
-   rankings page on FantasyPros, export to CSV.
-2. Rename each to exactly `qb.csv`, `rb.csv`, `wr.csv`, `te.csv`,
-   `k.csv`, `dst.csv` and drop them all in `data/weekly/` (create the
-   folder if it doesn't exist — gitignored, same reasoning as the draft
-   board's `cheatsheet.csv`).
+**No renaming needed** — just drop FantasyPros' own downloads (e.g.
+`FantasyPros_2026_Week_1_RB_Rankings.csv`) straight into `data/weekly/`
+(create the folder if it doesn't exist — gitignored, same reasoning as
+the draft board's `cheatsheet.csv`). `fp_blend.py` reads the position
+*and* the week number straight out of the filename (there's no POS
+column in this export at all, since each file's already one position),
+and always uses whichever week is newest per position. That means
+`data/weekly/` doubles as a permanent history — every Tuesday, just
+drop the new files in without deleting the old ones, and last week's
+export quietly stops being used without you having to do anything
+about it. A stray Flex file sitting in the same folder is harmless —
+its filename doesn't match any of the six real positions, so it's
+silently ignored.
 
-`fp_blend.py` reads whichever of those six files are present (position
-comes from the filename — the weekly export has no POS column, since
-each file's already one position) and matches every player ESPN shows
-you by name, or by team abbreviation for DST (ESPN says "Texans D/ST",
-FantasyPros says "Houston Texans" — matching on team code sidesteps
-that). Adds a FantasyPros column (position rank, their own start/sit
-grade, their point projection) next to every Waiver Target, plus a note
-on each Top Waiver Move. Deliberately **not fused into one score** with
+`fp_blend.py` matches every player ESPN shows you by name, or by team
+abbreviation for DST (ESPN says "Texans D/ST", FantasyPros says
+"Houston Texans" — matching on team code sidesteps that). Adds a
+FantasyPros column (position rank, their own start/sit grade, their
+point projection) next to every Waiver Target, plus a note on each Top
+Waiver Move. Deliberately **not fused into one score** with
 `percent_owned` — different scales, and forcing them together would
 hide real disagreement between the two instead of showing it. If no
-files are present, or the oldest one is more than `STALE_AFTER_DAYS`
-(8) old, the report says so plainly rather than silently running on
-stale or absent data.
+files are present, or the newest-per-position file is more than
+`STALE_AFTER_DAYS` (8) old, the report says so plainly rather than
+silently running on stale or absent data.
 
 Automating the CSV pull itself was considered and deliberately skipped:
 FantasyPros' free page export is built for a person to click, not a

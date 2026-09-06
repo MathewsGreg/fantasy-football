@@ -42,11 +42,17 @@ raw rank (valid there, since it's always within one position). Re-ran
 against the same real data afterward and confirmed the fix put the WR
 into FLEX instead.
 
-Not yet confirmed: whether `fp_blend.py`'s name-matching finds enough
-of a real roster/free-agent pool across a *full* season (multiple
-weeks, more positions, edge-case names) to keep producing a useful
-Waiver Targets list, beyond this one Week 1 run. Keep an eye on it over
-the next few weeks.
+The FLEX fix itself has been confirmed on real data: same real roster,
+same real FantasyPros export, re-run after the fix, and it put Tee
+Higgins (WR15, grade A) into FLEX instead of Dalton Kincaid (TE14, grade
+C-) — everything else in the report (dedicated-slot lineup order, waiver
+targets, Top Waiver Moves, the refresh-date banner) stayed correct and
+stable across both runs. Not yet confirmed: whether `fp_blend.py`'s
+name-matching keeps finding enough of a real roster/free-agent pool
+across a *full* season (multiple weeks, more positions, edge-case names)
+to keep producing a useful Waiver Targets list, beyond this one Week 1
+run. Keep an eye on it over the next few weeks before fully trusting it
+unattended.
 
 **Previously verified, under the old ESPN-authoritative design, against
 the real league across several rounds of actual data** (not just

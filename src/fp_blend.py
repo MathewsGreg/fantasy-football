@@ -1,5 +1,7 @@
 """Cross-references FantasyPros' *weekly* rankings against live ESPN
-players, as a second opinion alongside ESPN's own percent_owned/proj.
+players. FantasyPros' rank/grade/projection is the authoritative signal
+for lineup order and waiver targets now; ESPN's own percent_owned/proj
+is commentary shown alongside it, not the ranking authority.
 
 Unlike the draft-day export (one combined file, data/cheatsheet.csv),
 FantasyPros' weekly product is split one page per position with no
@@ -22,7 +24,9 @@ rank" the way we need.
 Deliberately doesn't fuse ESPN's percent_owned/points and FantasyPros'
 rank/grade/projection into one score - different scales, and forcing
 them together would hide real disagreement between the two instead of
-surfacing it. Shown side by side; you judge.
+surfacing it. FantasyPros' rank drives the lineup/waiver ordering;
+ESPN's numbers are shown alongside each pick as commentary, not blended
+into the rank itself.
 """
 
 from __future__ import annotations
@@ -161,14 +165,24 @@ def _load_weekly_csv(path: Path, position: str) -> list[WeeklyRank]:
 
 
 class FantasyProsBlend:
-    def __init__(self, by_name_pos: dict, by_team_dst: dict, age_days: float):
+    def __init__(self, by_name_pos: dict, by_team_dst: dict, age_days: float, as_of: datetime):
         self.by_name_pos = by_name_pos
         self.by_team_dst = by_team_dst
         self.age_days = age_days
+        # Oldest mtime among the currently-used (newest-per-position) files -
+        # i.e. the same "worst case" freshness measure age_days/stale use.
+        # FantasyPros is the authoritative source now even when stale (no
+        # falling back to ESPN), so this is published on every report rather
+        # than only surfaced once things cross STALE_AFTER_DAYS.
+        self.as_of = as_of
 
     @property
     def stale(self) -> bool:
         return self.age_days > STALE_AFTER_DAYS
+
+    @property
+    def as_of_str(self) -> str:
+        return self.as_of.strftime("%Y-%m-%d")
 
     def lookup(self, name: str, position: str, team: str) -> WeeklyRank | None:
         if position == "DST":
@@ -207,5 +221,7 @@ def load_blend(weekly_dir: Path = WEEKLY_DIR) -> FantasyProsBlend | None:
             else:
                 by_name_pos[(normalize_name(wr.player), position)] = wr
 
-    age_days = (datetime.now(timezone.utc).timestamp() - min(mtimes)) / 86400
-    return FantasyProsBlend(by_name_pos, by_team_dst, age_days)
+    oldest_mtime = min(mtimes)
+    age_days = (datetime.now(timezone.utc).timestamp() - oldest_mtime) / 86400
+    as_of = datetime.fromtimestamp(oldest_mtime, tz=timezone.utc)
+    return FantasyProsBlend(by_name_pos, by_team_dst, age_days, as_of)

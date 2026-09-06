@@ -92,12 +92,13 @@
   <div class="changes moves" id="topMovesBox"></div>
 
   <div class="matchup" id="matchupBox"></div>
+  <div class="subhead" style="margin-bottom:16px;">Matchup totals are ESPN's own weekly projection.</div>
 
   <h2>This Week's Lineup</h2>
   <div class="changes" id="changesBox"></div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Slot</th><th>Player</th><th>Team</th><th>Proj</th></tr></thead>
+      <thead><tr><th>Slot</th><th>Player</th><th>Team</th><th>FantasyPros</th><th>ESPN Proj</th></tr></thead>
       <tbody id="startersBody"></tbody>
     </table>
   </div>
@@ -105,7 +106,7 @@
   <h2>Bench</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>Proj</th></tr></thead>
+      <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>FantasyPros</th><th>ESPN Proj</th></tr></thead>
       <tbody id="benchBody"></tbody>
     </table>
   </div>
@@ -126,13 +127,13 @@
 
   var fpNote = document.getElementById("fpNote");
   if (!DATA.fp_loaded) {
-    fpNote.textContent = "No FantasyPros data loaded (no files in data/weekly/) — waiver targets show ESPN ownership only.";
-    fpNote.style.color = "var(--warn)";
-  } else if (DATA.fp_stale_days) {
-    fpNote.textContent = "FantasyPros data is " + DATA.fp_stale_days + " days old — consider re-exporting.";
-    fpNote.style.color = "var(--warn)";
+    fpNote.textContent = "No FantasyPros weekly data loaded (data/weekly/*.csv) — FantasyPros is the authoritative source for lineup order and waiver targets now, so neither can be ranked until an export is added. See README's Phase 3 section.";
+    fpNote.style.color = "var(--critical)";
   } else {
-    fpNote.textContent = "";
+    var days = DATA.fp_stale_days + (DATA.fp_stale_days === 1 ? " day" : " days");
+    fpNote.textContent = "FantasyPros data last refreshed " + DATA.fp_as_of + " (" + days + " ago)" +
+      (DATA.fp_stale ? " — stale, consider re-exporting, but still used as the authoritative source rather than falling back to ESPN." : ".");
+    fpNote.style.color = DATA.fp_stale ? "var(--warn)" : "var(--text-muted)";
   }
 
   var topMovesBox = document.getElementById("topMovesBox");
@@ -148,7 +149,7 @@
     });
     topMovesBox.appendChild(ol);
   } else {
-    topMovesBox.innerHTML = '<div class="none">No waiver moves clearly worth making this week — nothing available beats your bench by enough to be worth a roster spot.</div>';
+    topMovesBox.innerHTML = '<div class="none">No waiver moves clearly worth making this week — nothing FantasyPros ranks beats your bench by enough to be worth a roster spot.</div>';
   }
 
   var matchupBox = document.getElementById("matchupBox");
@@ -171,7 +172,11 @@
     });
     changesBox.appendChild(ul);
   } else {
-    changesBox.innerHTML = '<div class="none">No changes suggested — your current lineup already looks optimal by projection.</div>';
+    changesBox.innerHTML = '<div class="none">No changes suggested — your current lineup already matches FantasyPros\' ranking.</div>';
+  }
+
+  function fpCell(p) {
+    return p.fp_grade ? p.fp + ' (' + p.fp_grade + ')' : (p.fp || "—");
   }
 
   var startersBody = document.getElementById("startersBody");
@@ -182,13 +187,14 @@
       '<td class="slot-cell">' + p.slot + '</td>' +
       '<td>' + p.name + statusTag + '</td>' +
       '<td>' + (p.team || "—") + '</td>' +
-      '<td class="proj-cell">' + (p.proj || "—") + '</td>';
+      '<td class="proj-cell">' + fpCell(p) + '</td>' +
+      '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
     startersBody.appendChild(tr);
   });
 
   var benchBody = document.getElementById("benchBody");
   if (!DATA.bench.length) {
-    benchBody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-style:italic;">Empty bench</td></tr>';
+    benchBody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);font-style:italic;">Empty bench</td></tr>';
   }
   DATA.bench.forEach(function (p) {
     var tr = document.createElement("tr");
@@ -197,7 +203,8 @@
       '<td>' + p.name + statusTag + '</td>' +
       '<td>' + p.pos + '</td>' +
       '<td>' + (p.team || "—") + '</td>' +
-      '<td class="proj-cell">' + (p.proj || "—") + '</td>';
+      '<td class="proj-cell">' + fpCell(p) + '</td>' +
+      '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
     benchBody.appendChild(tr);
   });
 
@@ -213,11 +220,13 @@
     var wrap = document.createElement("div");
     wrap.className = "table-wrap";
     var table = document.createElement("table");
-    table.innerHTML = '<thead><tr><th>Player</th><th>Team</th><th>Owned</th><th>Proj</th><th>FantasyPros</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>Player</th><th>Team</th><th>FantasyPros Rank</th><th>FantasyPros Proj</th><th>ESPN Owned</th><th>ESPN Proj</th></tr></thead>';
     var tbody = document.createElement("tbody");
     var list = DATA.waivers[pos] || [];
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);font-style:italic;">No candidates returned</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);font-style:italic;">' +
+        (DATA.fp_loaded ? "No FantasyPros-ranked free agents at this position this week." : "No FantasyPros data loaded — see the note above.") +
+        '</td></tr>';
     }
     list.forEach(function (p) {
       var tr = document.createElement("tr");
@@ -225,9 +234,10 @@
       tr.innerHTML =
         '<td>' + p.name + statusTag + '</td>' +
         '<td>' + (p.team || "—") + '</td>' +
-        '<td class="proj-cell">' + p.owned + '</td>' +
-        '<td class="proj-cell">' + p.proj + '</td>' +
-        '<td class="proj-cell">' + (p.fp || "—") + '</td>';
+        '<td class="proj-cell">' + fpCell(p) + '</td>' +
+        '<td class="proj-cell">' + p.fp_proj + '</td>' +
+        '<td class="proj-cell">' + p.espn_owned + '</td>' +
+        '<td class="proj-cell">' + p.espn_proj + '</td>';
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -237,7 +247,7 @@
   });
 
   document.getElementById("footerNote").textContent =
-    "Generated " + DATA.generated_at + " from live ESPN league data. Derived analysis only — not a republished rankings table.";
+    "Generated " + DATA.generated_at + " — lineup order and waiver targets set by FantasyPros' weekly rankings, cross-referenced against live ESPN roster/injury/matchup data. Derived analysis only — not a republished rankings table.";
 })();
 </script>
 </body>

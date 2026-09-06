@@ -3,11 +3,16 @@ rationale) up front, then start/sit suggestions (diffed against your
 actual current ESPN lineup), then ranked waiver-wire targets grouped by
 positional need. Writes docs/index.html for GitHub Pages to serve.
 
-Deliberately doesn't publish FantasyPros' rankings table wholesale — only
-your own derived roster/lineup/waiver analysis, computed from your real
-ESPN league data, annotated with FantasyPros' weekly rank/grade/projection
-per matched player as a second opinion (data/weekly/*.csv, if present).
-See README's Phase 3 section.
+FantasyPros' weekly rank (data/weekly/*.csv) is the authoritative source
+for lineup order and waiver targets — it decides who starts and which
+free agents are worth looking at. Live ESPN league data (roster,
+injury/bye status, matchup, percent_owned, next-game projection) supplies
+everything FantasyPros' export doesn't — who's actually eligible, who's
+actually a free agent right now — and is shown alongside each pick as
+commentary, not as the ranking authority. If FantasyPros doesn't rank a
+player (or data/weekly/ is empty entirely), that player just isn't
+ranked; the report says so rather than quietly falling back to ESPN's
+numbers as if they were equivalent. See README's Phase 3 section.
 
 Run via scripts/weekly_refresh.ps1 (Task Scheduler, 3x/week). Every run
 recomputes both sections regardless of which day it is.
@@ -93,6 +98,25 @@ def backfill_percent_owned(league, roster: list[RosterPlayer]) -> None:
             p.percent_owned = owned
 
 
+def attach_fp_ranks(roster: list[RosterPlayer], blend) -> None:
+    """FantasyPros' weekly position rank is the authoritative signal for
+    lineup order (see module docstring) - mutates roster in place,
+    attaching each player's FantasyPros rank/grade/projection where
+    FantasyPros ranks him this week. Leaves fp_rank as None for anyone
+    FantasyPros doesn't rank (no CSVs loaded at all, or genuinely absent
+    from that position's export, e.g. a deep bench stash) rather than
+    guessing - suggest_lineup() falls back to ESPN's projection only
+    among that unranked subset, never to override a rank that exists."""
+    if blend is None:
+        return
+    for p in roster:
+        fp = blend.lookup(p.name, p.position, p.pro_team)
+        if fp is not None:
+            p.fp_rank = fp.rank
+            p.fp_grade = fp.grade
+            p.fp_proj = fp.proj_fpts
+
+
 def positional_need(roster: list[RosterPlayer], targets: dict) -> dict[str, str]:
     """'short' / 'ok' / 'full' per position, from current roster depth vs
     my_roster_targets. Informational grouping, not a hard cutoff."""
@@ -130,94 +154,90 @@ ESPN_FREE_AGENT_POSITION = {"DST": "D/ST"}
 DEFAULT_WAIVER_DEPTH = {"QB": 5, "RB": 10, "WR": 10, "TE": 5, "K": 5, "DST": 5}
 
 
-def rank_waiver_targets(league, need: dict, depth: dict = DEFAULT_WAIVER_DEPTH):
+def rank_waiver_targets(league, need: dict, blend, depth: dict = DEFAULT_WAIVER_DEPTH):
     positions = ["QB", "RB", "WR", "TE", "K", "DST"]
     # Positions you're short on first, then ok, then full - a real
     # grouping (need), not a fake single cross-position score.
     order = sorted(positions, key=lambda p: {"short": 0, "ok": 1, "full": 2}.get(need.get(p), 1))
 
-    targets = {}
+    targets: dict[str, list] = {}
     for pos in order:
+        if blend is None:
+            targets[pos] = []  # FantasyPros is the authoritative source now
+            # and there's no data loaded at all this week - nothing to rank.
+            continue
         espn_pos = ESPN_FREE_AGENT_POSITION.get(pos, pos)
-        # Ranked by percent_owned - the wider fantasy market's read of
-        # season-long value - not this week's projection, so an elite
-        # player who's OUT/IR this week still surfaces as a stash target
-        # rather than getting buried under healthy scrubs.
         candidates = league.free_agents(week=league.current_week, size=200, position=espn_pos)
-        candidates.sort(key=lambda p: -(p.percent_owned or 0))
-        targets[pos] = candidates[:depth.get(pos, 8)]
+        # Ranked by FantasyPros' own weekly position rank - the authoritative
+        # order now. A free agent FantasyPros doesn't rank this week is
+        # excluded outright (not shown lower down) rather than falling back
+        # to ESPN's percent_owned, which used to be the ranking signal here.
+        ranked = []
+        for fa in candidates:
+            fp = blend.lookup(fa.name, pos, getattr(fa, "proTeam", ""))
+            if fp is None:
+                continue
+            fa.fp_rank, fa.fp_grade, fa.fp_proj = fp.rank, fp.grade, fp.proj_fpts
+            ranked.append(fa)
+        ranked.sort(key=lambda p: p.fp_rank)
+        targets[pos] = ranked[:depth.get(pos, 8)]
     return order, targets
 
 
-# Minimum ownership-percentage gap between a free agent and your weakest
-# same-position bench player before we bother suggesting the swap - keeps
-# this list to moves that are actually worth the trouble, not noise from a
-# 2-point ownership difference.
-MIN_OWNERSHIP_GAP = 5.0
+# FantasyPros position-rank spots the free agent must beat your weakest
+# ranked bench player by before we bother suggesting the swap - same
+# "worth the trouble, not noise" reasoning the old ownership-gap threshold
+# (formerly MIN_OWNERSHIP_GAP) used, just against FantasyPros' rank now
+# that it's the authoritative source instead of ESPN's percent_owned. A
+# judgment call - revisit if the list feels too eager or too quiet.
+MIN_RANK_IMPROVEMENT = 5
 
 
 def top_waiver_moves(lineup_result, waiver_order, waiver_targets, max_moves: int = 5):
-    """Best add/drop pairings: for each position, compare the top-owned
-    available free agent against your weakest BENCH player at that same
-    position (never a starter) by percent_owned - our season-value proxy.
-    Deliberately doesn't require the free agent to be healthy *this week*:
-    a hurt/IR player who's still clearly the better season-long asset than
-    what you'd drop is exactly the stash-worthy move the ownership-based
-    ranking is meant to surface."""
+    """Best add/drop pairings: for each position, compare the top
+    FantasyPros-ranked available free agent against your weakest
+    FantasyPros-ranked BENCH player at that same position (never a
+    starter). Bench players FantasyPros doesn't rank at all this week are
+    skipped as drop candidates rather than assumed droppable - don't
+    guess. Deliberately doesn't require the free agent to be healthy
+    *this week*: a hurt/IR player FantasyPros still ranks well ahead of
+    your bench guy is exactly the stash-worthy move this is meant to
+    surface; the rationale says so explicitly either way."""
     bench_by_pos: dict[str, list] = {}
     for p in lineup_result.bench:
         bench_by_pos.setdefault(p.position, []).append(p)
 
     moves = []
     for pos in waiver_order:
-        bench_list = bench_by_pos.get(pos)
+        bench_list = [p for p in bench_by_pos.get(pos, []) if p.fp_rank is not None]
         if not bench_list:
-            continue  # nothing droppable at this position - nothing to suggest
-        weakest = min(bench_list, key=lambda p: p.percent_owned if p.percent_owned is not None else -1)
-        weakest_owned = weakest.percent_owned
-        if weakest_owned is None or weakest_owned < 0:
-            continue  # ownership never resolved for this player - don't guess
+            continue  # nothing FantasyPros ranks on your bench at this position - don't guess
+        weakest = max(bench_list, key=lambda p: p.fp_rank)  # highest rank number = worst
 
         best_fa = None
-        for fa in waiver_targets.get(pos, []):
-            fa_owned = fa.percent_owned or 0
-            if fa_owned - weakest_owned >= MIN_OWNERSHIP_GAP:
+        for fa in waiver_targets.get(pos, []):  # already FantasyPros-rank-sorted, best first
+            if weakest.fp_rank - fa.fp_rank >= MIN_RANK_IMPROVEMENT:
                 best_fa = fa
-                break  # list is already sorted by ownership - first hit wins
+                break  # list is already sorted by rank - first hit wins
         if best_fa is not None:
             moves.append({
                 "pos": pos, "add": best_fa, "drop": weakest,
-                "gap": (best_fa.percent_owned or 0) - weakest_owned,
+                "gap": weakest.fp_rank - best_fa.fp_rank,
             })
 
     moves.sort(key=lambda m: -m["gap"])
     return moves[:max_moves]
 
 
-def fp_note(name: str, position: str, team: str, blend) -> str:
-    """'RB7 (A, 15.9 pts)' from FantasyPros' weekly rankings - position
-    rank, their own start/sit grade, and their projection - or '' if
-    there's no blend loaded or this player isn't in it (e.g. that
-    position's file wasn't downloaded, or he wasn't ranked)."""
-    if blend is None:
-        return ""
-    fp_player = blend.lookup(name, position, team)
-    if fp_player is None:
-        return ""
-    extras = []
-    if fp_player.grade:
-        extras.append(fp_player.grade)
-    if fp_player.proj_fpts is not None:
-        extras.append(f"{fp_player.proj_fpts:.1f} pts")
-    suffix = f" ({', '.join(extras)})" if extras else ""
-    return f"{position}{fp_player.rank}{suffix}"
-
-
-def move_rationale(move: dict, blend=None) -> str:
+def move_rationale(move: dict) -> str:
     fa, drop, pos = move["add"], move["drop"], move["pos"]
     fa_status = "" if (fa.injuryStatus or "") in HEALTHY_STATUSES else fa.injuryStatus
-    fa_owned = fa.percent_owned or 0
-    drop_owned = drop.percent_owned or 0
+
+    fa_rank_bits = [f"{pos}{fa.fp_rank}"]
+    if getattr(fa, "fp_grade", ""):
+        fa_rank_bits.append(fa.fp_grade)
+    fa_rank_txt = ", ".join(fa_rank_bits)
+    drop_rank_txt = f"{pos}{drop.fp_rank}"
 
     if fa_status in ("OUT", "INJURY_RESERVE"):
         timing = f"won't help this week ({fa_status.replace('_', ' ').title()}), but is"
@@ -226,14 +246,15 @@ def move_rationale(move: dict, blend=None) -> str:
     else:
         timing = "can help as soon as this week, and is"
 
-    fp_bits = []
-    fa_fp = fp_note(fa.name, pos, getattr(fa, "proTeam", ""), blend)
-    if fa_fp:
-        fp_bits.append(f"{fa.name} {fa_fp}")
-    drop_fp = fp_note(drop.name, pos, drop.pro_team, blend)
-    if drop_fp:
-        fp_bits.append(f"{drop.name} {drop_fp}")
-    fp_suffix = f" (FantasyPros: {'; '.join(fp_bits)}.)" if fp_bits else ""
+    # ESPN's ownership is commentary now, not the authority behind the
+    # move - shown alongside FantasyPros' rank rather than driving it.
+    espn_bits = []
+    fa_owned = getattr(fa, "percent_owned", None)
+    if fa_owned is not None and fa_owned >= 0:
+        espn_bits.append(f"{fa.name} {fa_owned:.0f}% owned")
+    if drop.percent_owned is not None and drop.percent_owned >= 0:
+        espn_bits.append(f"{drop.name} {drop.percent_owned:.0f}% owned")
+    espn_suffix = f" (ESPN: {'; '.join(espn_bits)}.)" if espn_bits else ""
 
     if drop.ir_eligible:
         # Your league's own IR rules already qualify this player - stashing
@@ -256,16 +277,16 @@ def move_rationale(move: dict, blend=None) -> str:
         else:
             fa_clause = "can help as soon as this week"
         return (
-            f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned) — {fa_clause}. "
-            f"{drop.name} ({drop_owned:.0f}% owned) {drop_clause}, so stash "
-            f"him on IR instead of dropping him; that opens the roster spot "
-            f"for {fa.name} at no cost.{fp_suffix}"
+            f"Add {fa.name} (FantasyPros {fa_rank_txt}) — {fa_clause}. "
+            f"{drop.name} (FantasyPros {drop_rank_txt}) {drop_clause}, so "
+            f"stash him on IR instead of dropping him; that opens the roster "
+            f"spot for {fa.name} at no cost.{espn_suffix}"
         )
 
     return (
-        f"Add {fa.name} ({pos}, {fa_owned:.0f}% owned), drop {drop.name} "
-        f"({drop_owned:.0f}% owned) — {timing} the clearly better season-long "
-        f"asset at {pos}.{fp_suffix}"
+        f"Add {fa.name} (FantasyPros {fa_rank_txt}), drop {drop.name} "
+        f"(FantasyPros {drop_rank_txt}) — {timing} the clearly better "
+        f"FantasyPros-ranked option at {pos} this week.{espn_suffix}"
     )
 
 
@@ -273,15 +294,16 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
     template = (Path(__file__).parent / "report_template.html").read_text()
 
     def player_row(p):
-        status_html = f'<span class="tag warn">{p.injury_status}</span>' if p.injury_status else ""
-        proj = f"{p.projected_points:.1f}" if p.projected_points is not None else "—"
+        fp = f"{p.position}{p.fp_rank}" if p.fp_rank is not None else "—"
+        espn_proj = f"{p.projected_points:.1f}" if p.projected_points is not None else "—"
         return {
             "name": p.name, "pos": p.position, "team": p.pro_team,
-            "proj": proj, "status": p.injury_status,
+            "fp": fp, "fp_grade": p.fp_grade or "",
+            "espn_proj": espn_proj, "status": p.injury_status,
         }
 
     starters = [
-        {"slot": slot.slot_name, **(player_row(slot.player) if slot.player else {"name": "(empty)", "pos": "", "team": "", "proj": "", "status": ""})}
+        {"slot": slot.slot_name, **(player_row(slot.player) if slot.player else {"name": "(empty)", "pos": "", "team": "", "fp": "", "fp_grade": "", "espn_proj": "", "status": ""})}
         for slot in lineup_result.starters
     ]
     bench = [player_row(p) for p in lineup_result.bench]
@@ -290,10 +312,12 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         pos: [
             {
                 "name": p.name, "team": p.proTeam,
-                "owned": f"{p.percent_owned:.0f}%" if getattr(p, "percent_owned", None) is not None else "—",
-                "proj": f"{p.projected_points:.1f}" if getattr(p, "projected_points", None) else "—",
+                "fp": f"{pos}{p.fp_rank}",
+                "fp_grade": getattr(p, "fp_grade", "") or "",
+                "fp_proj": f"{p.fp_proj:.1f}" if getattr(p, "fp_proj", None) is not None else "—",
+                "espn_owned": f"{p.percent_owned:.0f}%" if (getattr(p, "percent_owned", None) is not None and p.percent_owned >= 0) else "—",
+                "espn_proj": f"{p.projected_points:.1f}" if getattr(p, "projected_points", None) else "—",
                 "status": "" if (p.injuryStatus or "") in HEALTHY_STATUSES else p.injuryStatus,
-                "fp": fp_note(p.name, pos, p.proTeam, blend),
             }
             for p in waiver_targets[pos]
         ]
@@ -309,8 +333,10 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         "my_projected": round(my_proj, 1) if my_proj else None,
         "opp_projected": round(opp_proj, 1) if opp_proj else None,
         "fp_loaded": blend is not None,
-        "fp_stale_days": round(blend.age_days) if (blend is not None and blend.stale) else None,
-        "top_moves": [move_rationale(m, blend) for m in top_moves],
+        "fp_as_of": blend.as_of_str if blend is not None else None,
+        "fp_stale": blend.stale if blend is not None else None,
+        "fp_stale_days": round(blend.age_days) if blend is not None else None,
+        "top_moves": [move_rationale(m) for m in top_moves],
         "starters": starters,
         "bench": bench,
         "changes": lineup_result.changes,
@@ -328,13 +354,18 @@ def main() -> None:
 
     blend = load_blend()
     if blend is None:
-        print("No data/weekly/*.csv found - running without the FantasyPros "
-              "second opinion (see README's Phase 3 section to add one).")
+        print("No data/weekly/*.csv found - FantasyPros is the authoritative "
+              "source for lineup order and waiver targets now, so neither can "
+              "be ranked until you add weekly exports (see README's Phase 3 "
+              "section).")
     elif blend.stale:
         print(f"WARNING: your oldest currently-used FantasyPros position file is "
-              f"{blend.age_days:.0f} days old - consider re-exporting from FantasyPros "
-              f"(their own refresh cycle is weekly). Old weeks already archived in "
-              f"data/weekly/ don't count against this, only whichever week is newest per position.")
+              f"{blend.age_days:.0f} days old (as of {blend.as_of_str}) - consider "
+              f"re-exporting from FantasyPros (their own refresh cycle is weekly). "
+              f"Still using it as the authoritative source rather than falling "
+              f"back to ESPN - the report publishes this date so you know how "
+              f"fresh it is. Old weeks already archived in data/weekly/ don't "
+              f"count against this, only whichever week is newest per position.")
 
     league = get_league()
     me = find_team(league, my_team_name)
@@ -343,10 +374,11 @@ def main() -> None:
     lineup_bp, opponent, my_proj, opp_proj = find_my_lineup(league, me)
     roster = [box_player_to_roster_player(bp) for bp in lineup_bp]
     backfill_percent_owned(league, roster)
+    attach_fp_ranks(roster, blend)
     lineup_result = suggest_lineup(roster, config["roster_slots"], config["flex_eligible"])
 
     need = positional_need(roster, config["my_roster_targets"])
-    waiver_order, waiver_targets = rank_waiver_targets(league, need)
+    waiver_order, waiver_targets = rank_waiver_targets(league, need, blend)
     top_moves = top_waiver_moves(lineup_result, waiver_order, waiver_targets)
 
     html = render_html(

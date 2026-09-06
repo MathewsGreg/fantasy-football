@@ -1,11 +1,14 @@
 """Start/sit logic: given your current roster and the league's roster
-shape, suggest a starting lineup by projected points and diff it against
-whatever ESPN currently has you starting.
+shape, suggest a starting lineup by FantasyPros' weekly position rank
+(the authoritative signal - see weekly_report.py's attach_fp_ranks) and
+diff it against whatever ESPN currently has you starting. ESPN's own
+next-game projection is used only to order the players FantasyPros
+doesn't rank this week, never to override a FantasyPros rank that exists.
 
 Deliberately doesn't try to be clever about matchups, weather, or
-game script — it's a projection-ranking exercise, same VBD-adjacent
-spirit as the draft board. Treat the diff as a prompt to go look at the
-specific swap, not an instruction to blindly follow.
+game script beyond what FantasyPros' own rank already bakes in. Treat
+the diff as a prompt to go look at the specific swap, not an instruction
+to blindly follow.
 """
 
 from __future__ import annotations
@@ -30,12 +33,19 @@ class RosterPlayer:
     position: str  # QB/RB/WR/TE/K/DST
     pro_team: str
     injury_status: str  # '' / ACTIVE / QUESTIONABLE / DOUBTFUL / OUT / INJURY_RESERVE / ...
-    projected_points: float | None
+    projected_points: float | None  # ESPN's next-game projection - commentary
+    # now, not the ranking authority (see fp_rank below)
     current_slot: str  # ESPN's lineupSlot, e.g. 'RB', 'WR', 'BE', 'FLEX', 'IR'
-    percent_owned: float | None = None  # league-wide ownership - our proxy for
-    # season-long value, independent of this week's health/projection
+    percent_owned: float | None = None  # ESPN league-wide ownership - commentary
+    # only; used to be the waiver-ranking authority, FantasyPros' rank is now
     ir_eligible: bool = False  # ESPN's own read of whether THIS league's IR-slot
     # rules currently qualify this player - not something we compute ourselves
+    fp_rank: int | None = None  # FantasyPros' weekly position rank - the
+    # authoritative signal for lineup order now. None means FantasyPros
+    # doesn't rank this player this week (no CSVs loaded, or genuinely
+    # absent from that position's export) - never guessed or backfilled.
+    fp_grade: str = ""  # FantasyPros' own start/sit letter grade, if ranked
+    fp_proj: float | None = None  # FantasyPros' own point projection, if ranked
 
     @property
     def currently_starting(self) -> bool:
@@ -64,10 +74,17 @@ class LineupSuggestion:
 
 
 def _sort_key(p: RosterPlayer):
-    # Unprojected players sort after projected ones, not at rank 0 - "no
-    # data" shouldn't look worse than "projected for 0 points."
+    # FantasyPros' own weekly position rank is the authoritative order now -
+    # lower rank sorts first. A player FantasyPros doesn't rank this week
+    # (no CSVs loaded, or genuinely absent from that position's export)
+    # sorts after every ranked player, never ahead of one on the strength of
+    # ESPN's projection alone; among that unranked group, ESPN's projection
+    # is used only as a last-resort tiebreaker so the lineup still fills out
+    # sensibly. Unprojected players within that group sort last of all, not
+    # at rank 0 - "no data" shouldn't look worse than "projected for 0 points."
+    has_fp_rank = p.fp_rank is not None
     has_projection = p.projected_points is not None
-    return (not has_projection, -(p.projected_points or 0))
+    return (not has_fp_rank, p.fp_rank if has_fp_rank else 0, not has_projection, -(p.projected_points or 0))
 
 
 def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible: list[str]) -> LineupSuggestion:
@@ -115,7 +132,12 @@ def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible
         if p is None:
             continue
         if not p.currently_starting:
-            reason = "no healthy alternative" if not eligible else "higher projection than your current starter"
+            if not eligible:
+                reason = "no healthy alternative"
+            elif p.fp_rank is not None:
+                reason = f"FantasyPros ranks him {p.position}{p.fp_rank} this week"
+            else:
+                reason = "no FantasyPros rank this week — using ESPN's projection"
             result.changes.append(f"Start {p.name} ({slot.slot_name}) — currently benched, {reason}.")
         elif p.warn:
             result.changes.append(f"{p.name} is {p.injury_status.title()} — worth a game-time check before locking {slot.slot_name}.")
@@ -125,8 +147,10 @@ def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible
                 why = "on a bye this week"
             elif p.hard_excluded:
                 why = f"is {p.injury_status.title()}"
+            elif p.fp_rank is not None:
+                why = f"ranked behind your other options by FantasyPros ({p.position}{p.fp_rank})"
             else:
-                why = "projects behind your other options"
+                why = "projects behind your other options (no FantasyPros rank this week)"
             result.changes.append(f"Bench {p.name} — {why}.")
 
     return result

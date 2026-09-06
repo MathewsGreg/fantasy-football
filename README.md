@@ -2,8 +2,9 @@
 
 Tools for a 10-team half-PPR ESPN league: a draft-day board (VORP/VONA
 against our actual roster construction) and, once the season's under way,
-a weekly report of start/sit suggestions and waiver-wire targets pulled
-from live ESPN league data. Split out of the `mlb-elo` repo into its own
+a weekly report of start/sit suggestions and waiver-wire targets ranked
+by FantasyPros' weekly rankings, cross-referenced against live ESPN
+league data. Split out of the `mlb-elo` repo into its own
 project once the draft-board work was done — no functional connection to
 that project, just born from the same sessions (a couple of comments
 still point back to its `daily_refresh.ps1` as the pattern this one's
@@ -13,11 +14,32 @@ scheduled-task script follows).
 
 **Draft board (phase 1): done**, used for the actual 2026 draft. No known issues.
 
-**Weekly report (phase 3): done**, and verified against the real league
-across several rounds of actual data (not just synthetic tests) — the
-ESPN connection, lineup diff, waiver ranking, IR handling, and the
-FantasyPros weekly blend have all been run against real roster/rankings
-data and fixed where reality disagreed with the first assumption:
+**Weekly report (phase 3): sourcing flipped, not yet re-verified against a
+real live run.** FantasyPros' weekly rankings are now the authoritative
+source for lineup order and waiver targets — ESPN's `percent_owned`/
+next-game projection moved from "the ranking signal" to "commentary shown
+alongside FantasyPros' rank." Everything below this paragraph up through
+"FantasyPros' weekly rankings appear to exclude players ruled out..." was
+verified under the *old* ESPN-authoritative design; the underlying ESPN
+API quirks it documents (D/ST status string, free-agent position label,
+missing ownership on `box_scores()`, `ir_eligible` semantics) still apply
+unchanged, since they're about reading ESPN data, not about how that data
+gets ranked. What specifically has NOT been re-run against a real league
+since the flip: does `fp_blend.py`'s name-matching actually find enough
+of your real roster/free-agent pool in a live FantasyPros export to
+produce a useful lineup and Waiver Targets list, or does coverage turn
+out thinner in practice than expected. The flip itself was only
+exercised with fabricated names/ranks in a throwaway script (no real
+ESPN or FantasyPros data touched it) — worth a manual
+`python weekly_report.py` run against real ESPN + a fresh FantasyPros
+export before trusting it for an actual waiver decision.
+
+**Previously verified, under the old ESPN-authoritative design, against
+the real league across several rounds of actual data** (not just
+synthetic tests) — the ESPN connection, lineup diff, waiver ranking, IR
+handling, and the FantasyPros weekly blend have all been run against
+real roster/rankings data and fixed where reality disagreed with the
+first assumption:
 
 - ESPN reports a healthy D/ST's `injuryStatus` as `'NORMAL'`, not
   `'ACTIVE'` or blank — handled in `HEALTHY_STATUSES`
@@ -53,9 +75,12 @@ without you touching the machine.
 - `positional_need()` counts roster depth without discounting injured
   players, so a position can read "full" even when its *healthy* depth
   is thin. Revisit if the need tags feel unhelpful in practice.
-- `MIN_OWNERSHIP_GAP` (5 points) is a judgment call — a real Top
-  Waiver Move landed right at that threshold (defensible, not
-  compelling). Raise it if the list feels too eager.
+- `MIN_RANK_IMPROVEMENT` (5 FantasyPros rank spots, replacing the old
+  ownership-based `MIN_OWNERSHIP_GAP`) is an unvalidated judgment call —
+  the old ownership threshold had at least one real Top Waiver Move land
+  right at it (defensible, not compelling); this new rank-based one
+  hasn't been checked against a real week's numbers at all yet. Revisit
+  once it has.
 - Automating the FantasyPros CSV pull itself (their sanctioned path is
   a paid personal API key, ~$8.99/mo) was considered and declined in
   favor of the free manual export. Revisit if that calculus changes.
@@ -179,34 +204,57 @@ doesn't guarantee line up.
 
 ### The report
 
+**FantasyPros' weekly rankings are the authoritative source for lineup
+order and waiver targets.** ESPN's live league data — your current-week
+box score (real slot assignments, injury/bye status, matchup), and each
+player's `percent_owned`/next-game projection — supplies everything
+FantasyPros' export doesn't (who's actually on your roster, who's
+actually a free agent right now) and is shown alongside every pick as
+commentary, never as what decides the pick. This flipped from an earlier
+version where ESPN's own projection/ownership drove everything and
+FantasyPros was only a second opinion — see the git log around the
+commit that made this change if you want the full before/after.
+
 `weekly_report.py` pulls your current-week box score (real ESPN slot
-assignments + per-week projections, not a hand-reconstructed roster),
-suggests a lineup by projection (`lineup.py`), diffs it against what
-ESPN actually has you starting, and ranks `league.free_agents()` by
-position — grouped by whether that position is short/ok/full against
-`my_roster_targets`, not one fake cross-position score. Writes
+assignments, not a hand-reconstructed roster) and `lineup.py` suggests a
+lineup ordered by each player's FantasyPros weekly position rank
+(`attach_fp_ranks()` looks it up per roster player), diffing it against
+what ESPN actually has you starting. A player FantasyPros doesn't rank
+this week (no CSVs loaded, or genuinely absent from that position's
+export — e.g. a deep bench stash) sorts after every ranked player;
+ESPN's own projection is used only to order that unranked group among
+itself, never to outrank someone FantasyPros did rank. Waiver targets
+are `league.free_agents()` filtered down to only players FantasyPros
+ranks this week, sorted by that rank, then grouped by whether the
+position is short/ok/full against `my_roster_targets`. Writes
 `docs/index.html` — **deliberately doesn't publish FantasyPros' rankings
-table itself**, only this derived analysis from your own live league data.
+table itself**, only this derived analysis.
 
 The page opens with **Top Waiver Moves**: up to 5 explicit add/drop
 pairings (add this free agent, drop this bench player), each with a
-one-line rationale, ranked by the ownership-percentage gap between the
-two. Free agents are ranked by `percent_owned` — the wider market's read
-of season-long value — rather than this week's projection, so a hurt or
-IR player who's still clearly the better long-term asset than your
-weakest bench player at that position surfaces as a stash recommendation
-even though he can't play this week; the rationale says so explicitly
-either way. If nothing clears a small minimum ownership gap
-(`MIN_OWNERSHIP_GAP`, currently 5 points — enough to filter out noise
-without being so strict it hides real opportunities), it says there's
-nothing worth doing rather than manufacturing a move.
+one-line rationale, ranked by the FantasyPros rank gap between the two.
+For each position, it compares the best FantasyPros-ranked available
+free agent against your *worst* FantasyPros-ranked bench player — a
+bench player FantasyPros doesn't rank at all this week is skipped as a
+drop candidate rather than assumed droppable (don't guess). Deliberately
+doesn't require the free agent to be healthy *this week*: a hurt or IR
+player FantasyPros still ranks well ahead of your bench guy surfaces as
+a stash recommendation even though he can't play this week; the
+rationale says so explicitly either way. If nothing clears a small
+minimum rank improvement (`MIN_RANK_IMPROVEMENT`, currently 5 rank
+spots — enough to filter out noise without being so strict it hides real
+opportunities), it says there's nothing worth doing rather than
+manufacturing a move.
 
 Waiver Targets by position go 10 deep for RB/WR (scarce, season-swinging
 positions worth digging into, injured stashes included) and 5 deep for
 QB/TE/K/DST (thin, mostly interchangeable past the top few) —
 `DEFAULT_WAIVER_DEPTH` in `weekly_report.py` if you want to change that.
+A position can come back shallower than that if FantasyPros simply
+doesn't rank that many free agents this week — the list is never padded
+out with ESPN-only, FantasyPros-unranked players to hit the depth target.
 
-### FantasyPros second opinion
+### FantasyPros weekly rankings
 
 Unlike the draft-day export (one combined "ALL positions" file),
 FantasyPros' *weekly* rankings are one page per position with no
@@ -215,7 +263,7 @@ mixes them into one cross-position order rather than giving each
 player's rank within their own position — not what we want here. So:
 download each position separately from FantasyPros' weekly rankings
 (as many as you care about — any subset is fine, missing ones just mean
-no second opinion for that position).
+no lineup/waiver ranking for that position that week).
 
 **No renaming needed** — just drop FantasyPros' own downloads (e.g.
 `FantasyPros_2026_Week_1_RB_Rankings.csv`) straight into `data/weekly/`
@@ -233,15 +281,29 @@ silently ignored.
 
 `fp_blend.py` matches every player ESPN shows you by name, or by team
 abbreviation for DST (ESPN says "Texans D/ST", FantasyPros says
-"Houston Texans" — matching on team code sidesteps that). Adds a
-FantasyPros column (position rank, their own start/sit grade, their
-point projection) next to every Waiver Target, plus a note on each Top
-Waiver Move. Deliberately **not fused into one score** with
-`percent_owned` — different scales, and forcing them together would
-hide real disagreement between the two instead of showing it. If no
-files are present, or the newest-per-position file is more than
-`STALE_AFTER_DAYS` (8) old, the report says so plainly rather than
-silently running on stale or absent data.
+"Houston Texans" — matching on team code sidesteps that). Every starter,
+bench player, and Waiver Target row shows FantasyPros' position rank
+(and grade, when ranked) as the primary column, with ESPN's
+`percent_owned`/next-game projection alongside it as commentary — shown
+side by side, deliberately **not fused into one score**, since different
+scales would hide real disagreement between the two instead of
+surfacing it.
+
+**FantasyPros stays authoritative even when its data is stale — the
+report never silently falls back to ESPN's numbers.** Since
+`weekly_report.py` runs unattended 3x/week but `data/weekly/` only
+updates when you manually drop in a new export, the report always
+publishes the exact date FantasyPros' currently-used data was last
+refreshed (`blend.as_of_str`, from whichever per-position file is
+oldest) right at the top of the page, and flags it if it's past
+`STALE_AFTER_DAYS` (8) — but keeps using it regardless, on the theory
+that slightly-stale FantasyPros rankings are still a better authority
+than switching to ESPN's numbers for that run. If `data/weekly/` has no
+files at all, there's no FantasyPros data to fall back to being stale
+on — lineup order falls back to ESPN's projection for every player (the
+old behavior, since nothing is ranked either way) and Waiver Targets
+comes back empty for every position, with the page saying so plainly
+rather than silently running on absent data.
 
 Automating the CSV pull itself was considered and deliberately skipped:
 FantasyPros' free page export is built for a person to click, not a

@@ -5,6 +5,14 @@ diff it against whatever ESPN currently has you starting. ESPN's own
 next-game projection is used only to order the players FantasyPros
 doesn't rank this week, never to override a FantasyPros rank that exists.
 
+FLEX is the one place position rank can't be used directly: it compares
+players across positions, and FantasyPros' rank scale isn't comparable
+across positions (TE14 and WR15 aren't remotely the same quality of
+player - TE only has a couple dozen fantasy-relevant options in a given
+week). FLEX candidates are compared on FantasyPros' own point projection
+instead, which is on the same scale for everyone - see
+_cross_position_sort_key.
+
 Deliberately doesn't try to be clever about matchups, weather, or
 game script beyond what FantasyPros' own rank already bakes in. Treat
 the diff as a prompt to go look at the specific swap, not an instruction
@@ -74,17 +82,37 @@ class LineupSuggestion:
 
 
 def _sort_key(p: RosterPlayer):
-    # FantasyPros' own weekly position rank is the authoritative order now -
-    # lower rank sorts first. A player FantasyPros doesn't rank this week
-    # (no CSVs loaded, or genuinely absent from that position's export)
-    # sorts after every ranked player, never ahead of one on the strength of
-    # ESPN's projection alone; among that unranked group, ESPN's projection
-    # is used only as a last-resort tiebreaker so the lineup still fills out
-    # sensibly. Unprojected players within that group sort last of all, not
-    # at rank 0 - "no data" shouldn't look worse than "projected for 0 points."
+    # FantasyPros' own weekly position rank is the authoritative order for
+    # comparing players at the SAME position - lower rank sorts first. Only
+    # valid within one position: use _cross_position_sort_key for FLEX,
+    # which compares players across positions. A player FantasyPros doesn't
+    # rank this week (no CSVs loaded, or genuinely absent from that
+    # position's export) sorts after every ranked player, never ahead of
+    # one on the strength of ESPN's projection alone; among that unranked
+    # group, ESPN's projection is used only as a last-resort tiebreaker so
+    # the lineup still fills out sensibly. Unprojected players within that
+    # group sort last of all, not at rank 0 - "no data" shouldn't look
+    # worse than "projected for 0 points."
     has_fp_rank = p.fp_rank is not None
     has_projection = p.projected_points is not None
     return (not has_fp_rank, p.fp_rank if has_fp_rank else 0, not has_projection, -(p.projected_points or 0))
+
+
+def _cross_position_sort_key(p: RosterPlayer):
+    # FantasyPros' position rank is NOT comparable across positions - e.g.
+    # TE only has ~25 fantasy-relevant players in a given week, so TE14 is
+    # a mediocre streamer, while WR15 among ~100+ relevant WRs is a clear
+    # must-start, even though 14 < 15. FLEX candidates come from multiple
+    # positions at once, so cross-position comparison uses FantasyPros' own
+    # point projection instead (comparable across positions, same reason
+    # ESPN's projection served this role in the pre-FantasyPros-authoritative
+    # design) - confirmed against a real week's data, where raw-rank
+    # comparison had a low-end TE bumping a clearly-better WR out of FLEX.
+    # Falls back to ESPN's projection only for players FantasyPros doesn't
+    # project at all.
+    has_fp_proj = p.fp_proj is not None
+    has_projection = p.projected_points is not None
+    return (not has_fp_proj, -(p.fp_proj or 0), not has_projection, -(p.projected_points or 0))
 
 
 def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible: list[str]) -> LineupSuggestion:
@@ -114,7 +142,7 @@ def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible
         for p in by_position.get(pos, [])
         if p.player_id not in used_ids
     ]
-    flex_pool.sort(key=_sort_key)
+    flex_pool.sort(key=_cross_position_sort_key)
     flex_count = roster_slots.get("FLEX", 0)
     for i in range(flex_count):
         player = flex_pool[i] if i < len(flex_pool) else None
@@ -132,8 +160,15 @@ def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible
         if p is None:
             continue
         if not p.currently_starting:
+            is_flex = slot.slot_name.startswith("FLEX")
             if not eligible:
                 reason = "no healthy alternative"
+            elif is_flex and p.fp_proj is not None:
+                # FLEX compares across positions on FantasyPros' point
+                # projection (see _cross_position_sort_key), not raw rank -
+                # say so, since citing his position rank here would imply a
+                # comparison that isn't actually how FLEX was decided.
+                reason = f"FantasyPros projects him for {p.fp_proj:.1f} pts this week"
             elif p.fp_rank is not None:
                 reason = f"FantasyPros ranks him {p.position}{p.fp_rank} this week"
             else:
@@ -148,7 +183,12 @@ def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible
             elif p.hard_excluded:
                 why = f"is {p.injury_status.title()}"
             elif p.fp_rank is not None:
-                why = f"ranked behind your other options by FantasyPros ({p.position}{p.fp_rank})"
+                # Include his own FantasyPros point projection alongside the
+                # rank when available - rank alone isn't comparable across
+                # positions (a FLEX bench reason citing only "TE9" or "WR15"
+                # can't be sanity-checked against each other without it).
+                proj_bit = f", {p.fp_proj:.1f} pts" if p.fp_proj is not None else ""
+                why = f"ranked behind your other options by FantasyPros ({p.position}{p.fp_rank}{proj_bit})"
             else:
                 why = "projects behind your other options (no FantasyPros rank this week)"
             result.changes.append(f"Bench {p.name} — {why}.")

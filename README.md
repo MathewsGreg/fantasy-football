@@ -14,25 +14,39 @@ scheduled-task script follows).
 
 **Draft board (phase 1): done**, used for the actual 2026 draft. No known issues.
 
-**Weekly report (phase 3): sourcing flipped, not yet re-verified against a
-real live run.** FantasyPros' weekly rankings are now the authoritative
-source for lineup order and waiver targets — ESPN's `percent_owned`/
-next-game projection moved from "the ranking signal" to "commentary shown
-alongside FantasyPros' rank." Everything below this paragraph up through
-"FantasyPros' weekly rankings appear to exclude players ruled out..." was
-verified under the *old* ESPN-authoritative design; the underlying ESPN
-API quirks it documents (D/ST status string, free-agent position label,
-missing ownership on `box_scores()`, `ir_eligible` semantics) still apply
-unchanged, since they're about reading ESPN data, not about how that data
-gets ranked. What specifically has NOT been re-run against a real league
-since the flip: does `fp_blend.py`'s name-matching actually find enough
-of your real roster/free-agent pool in a live FantasyPros export to
-produce a useful lineup and Waiver Targets list, or does coverage turn
-out thinner in practice than expected. The flip itself was only
-exercised with fabricated names/ranks in a throwaway script (no real
-ESPN or FantasyPros data touched it) — worth a manual
-`python weekly_report.py` run against real ESPN + a fresh FantasyPros
-export before trusting it for an actual waiver decision.
+**Weekly report (phase 3): sourcing flipped, one real run in, one real
+bug found and fixed by it.** FantasyPros' weekly rankings are now the
+authoritative source for lineup order and waiver targets — ESPN's
+`percent_owned`/next-game projection moved from "the ranking signal" to
+"commentary shown alongside FantasyPros' rank." Everything below this
+paragraph up through "FantasyPros' weekly rankings appear to exclude
+players ruled out..." was verified under the *old* ESPN-authoritative
+design; the underlying ESPN API quirks it documents (D/ST status string,
+free-agent position label, missing ownership on `box_scores()`,
+`ir_eligible` semantics) still apply unchanged, since they're about
+reading ESPN data, not about how that data gets ranked.
+
+A real run against real ESPN + real FantasyPros weekly CSVs immediately
+surfaced a real bug: **FantasyPros' position rank isn't comparable
+across positions**, but FLEX has to compare candidates from multiple
+positions at once (RB/WR/TE). The first real report put a TE ranked
+TE14 (grade C-) into FLEX over a WR ranked WR15 (grade A) on the bench,
+purely because 14 < 15 — TE only has ~25 fantasy-relevant players in a
+given week, so TE14 is a mediocre streamer, nowhere close to WR15's
+actual value among ~100+ relevant WRs. Fixed in `lineup.py`: FLEX
+candidates are now compared on FantasyPros' own point projection
+(`fp_proj`, same scale across positions — the same reason ESPN's
+projection served this role in the old design) via
+`_cross_position_sort_key`, while same-position slots keep comparing
+raw rank (valid there, since it's always within one position). Re-ran
+against the same real data afterward and confirmed the fix put the WR
+into FLEX instead.
+
+Not yet confirmed: whether `fp_blend.py`'s name-matching finds enough
+of a real roster/free-agent pool across a *full* season (multiple
+weeks, more positions, edge-case names) to keep producing a useful
+Waiver Targets list, beyond this one Week 1 run. Keep an eye on it over
+the next few weeks.
 
 **Previously verified, under the old ESPN-authoritative design, against
 the real league across several rounds of actual data** (not just

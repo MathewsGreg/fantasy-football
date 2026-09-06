@@ -73,6 +73,9 @@
   .tag.short { background: var(--warn-bg); color: var(--warn); }
   .tag.ok { background: var(--surface-2); color: var(--text-muted); }
   .tag.full { background: var(--surface-2); color: var(--text-muted); opacity: .7; }
+  .tag.moveup { background: var(--accent-contrast); color: var(--accent); }
+  .tag.movedown { background: var(--critical-bg); color: var(--critical); }
+  .move-note { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 
   .waiver-group { margin-bottom: 18px; }
   .waiver-group h3 { font-family: var(--font-display); font-size: 14px; letter-spacing: .03em; margin: 0 0 6px; display: flex; align-items: center; }
@@ -87,6 +90,7 @@
     <div class="subhead" id="subhead"></div>
   </div>
   <div class="subhead" id="fpNote" style="margin-top:2px;"></div>
+  <div class="subhead" id="fpUnchangedNote" style="margin-top:2px;" hidden></div>
 
   <h2 style="margin-top:16px;">Top Waiver Moves</h2>
   <div class="changes moves" id="topMovesBox"></div>
@@ -136,6 +140,15 @@
     fpNote.style.color = DATA.fp_stale ? "var(--warn)" : "var(--text-muted)";
   }
 
+  var fpUnchangedNote = document.getElementById("fpUnchangedNote");
+  if (DATA.fp_unchanged_positions && DATA.fp_unchanged_positions.length) {
+    fpUnchangedNote.hidden = false;
+    fpUnchangedNote.textContent = "No fresher FantasyPros export detected since your last report for: " +
+      DATA.fp_unchanged_positions.join(", ") + " — did you forget to grab this morning's files for " +
+      (DATA.fp_unchanged_positions.length === 1 ? "that position" : "those positions") + "?";
+    fpUnchangedNote.style.color = "var(--warn)";
+  }
+
   var topMovesBox = document.getElementById("topMovesBox");
   if (DATA.top_moves && DATA.top_moves.length) {
     var ol = document.createElement("ol");
@@ -175,8 +188,26 @@
     changesBox.innerHTML = '<div class="none">No changes suggested — your current lineup already matches FantasyPros\' ranking.</div>';
   }
 
+  function moveBadge(move) {
+    // Inline "(+3)"/"(-5)"/"(NEW)" next to a rank/ownership number, showing
+    // how it's moved since the last report - a move at or past the
+    // notable threshold (see snapshot.py) gets a colored pill; a smaller
+    // move still shows, just quieter, so nothing is hidden, only
+    // de-emphasized.
+    if (!move) return "";
+    if (move.dir === "new") {
+      return ' <span class="tag warn">(NEW)</span>';
+    }
+    var text = "(" + move.text + ")";
+    if (move.notable) {
+      return ' <span class="tag ' + (move.dir === "down" ? "movedown" : "moveup") + '">' + text + '</span>';
+    }
+    return ' <span class="move-note">' + text + '</span>';
+  }
+
   function fpCell(p) {
-    return p.fp_grade ? p.fp + ' (' + p.fp_grade + ')' : (p.fp || "—");
+    var base = p.fp_grade ? p.fp + ' (' + p.fp_grade + ')' : (p.fp || "—");
+    return base + moveBadge(p.fp_move);
   }
 
   var startersBody = document.getElementById("startersBody");
@@ -236,7 +267,7 @@
         '<td>' + (p.team || "—") + '</td>' +
         '<td class="proj-cell">' + fpCell(p) + '</td>' +
         '<td class="proj-cell">' + p.fp_proj + '</td>' +
-        '<td class="proj-cell">' + p.espn_owned + '</td>' +
+        '<td class="proj-cell">' + p.espn_owned + moveBadge(p.owned_move) + '</td>' +
         '<td class="proj-cell">' + p.espn_proj + '</td>';
       tbody.appendChild(tr);
     });

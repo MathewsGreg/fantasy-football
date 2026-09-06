@@ -332,7 +332,57 @@ public API with a personal tier, ~$8.99/mo) costs money for something
 that already works as a 30-second manual step. Revisit if that
 calculus changes.
 
+**FantasyPros' own rankings move more often than once a week** — they're
+a rolling consensus of 100+ experts, each with their own "last updated"
+timestamp, that gets re-aggregated as individual experts revise picks off
+practice reports, beat-writer news, and injury designations through the
+week. There's no fixed "Tuesday and done" schedule on their end, even
+though our own habit has been to export once on Tuesday. **The intended
+workflow now is grabbing fresh exports three times a week — Tuesday,
+Thursday, and Sunday mornings, before each scheduled `weekly_refresh.ps1`
+run** — not just Tuesday. `fp_blend.py` always uses whichever week is
+newest per position regardless of how often you export, so exporting
+more often costs nothing extra beyond the 30-second habit itself.
+
 Run it directly: `cd src && python3 weekly_report.py`.
+
+### Tracking week-over-week movement ("Movers")
+
+Every run compares against `data/last_snapshot.json` (this run's numbers,
+saved after every successful run — tracked in git, since unlike
+`data/weekly/*.csv` it's our own derived data, already published in
+`docs/index.html`, not FantasyPros' raw content) and shows how each
+player's FantasyPros rank (everywhere) and ESPN `percent_owned` (Waiver
+Targets only) has moved since the previous run, right next to that
+number — e.g. a WR who was ranked WR3 last time and is WR8 now shows
+`WR8 (-5)`. A player FantasyPros didn't rank last time but does now shows
+`(NEW)` instead of a number — the clearest "something changed" signal
+there is (a backup suddenly getting ranked at all is usually exactly the
+"starter got hurt" scenario this is meant to catch). Moves past a
+threshold (`NOTABLE_RANK_MOVE` = 5 rank spots, `NOTABLE_OWNERSHIP_MOVE` =
+10 ownership points — judgment calls, same reasoning as
+`MIN_RANK_IMPROVEMENT`) get visually highlighted; smaller moves still
+show, just quieter, so nothing is hidden, only de-emphasized. If a move
+flips a lineup decision, that's already visible in the normal Start/Bench
+messages above — no separate "movers" section, this is deliberately just
+inline annotation on the numbers already in the report (see `snapshot.py`
+for the mechanics: `rank_move()`/`ownership_move()`).
+
+Separately, since the workflow above depends on you actually re-exporting
+before each scheduled run: if a position's FantasyPros source file is
+*exactly* the one used last run (same path and modification time — not
+just "not too old"), the report flags it plainly near the top: *"No
+fresher FantasyPros export detected since your last report for: RB, WR —
+did you forget to grab this morning's files?"* This is distinct from the
+existing staleness warning (`STALE_AFTER_DAYS`, an age threshold) — a
+file could be perfectly fresh by that measure and still be the same file
+you used Tuesday, if Thursday's export never happened. See
+`snapshot.stale_positions()`.
+
+Not yet exercised against real data as of this writing — same caveat as
+the sourcing flip itself: built and unit-tested with fabricated
+snapshots, not yet confirmed against a real two-run sequence with a real
+FantasyPros re-export in between.
 
 ### Publishing it (GitHub Pages, one-time)
 

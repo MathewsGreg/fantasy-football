@@ -1,8 +1,15 @@
 # Weekly fantasy report: pull live ESPN roster/free-agent data, regenerate
-# docs/index.html (start/sit + waiver targets), publish if changed.
+# docs/index.html (start/sit + waiver targets), publish if changed. Also
+# commits data/last_snapshot.json - weekly_report.py's saved numbers from
+# this run, used next run to show how each player's FantasyPros rank/ESPN
+# ownership has moved since last time (see README's "Tracking
+# week-over-week movement" section).
 # Run by three Windows Task Scheduler triggers (Tue/Thu 9am, Sun 11am -
-# see README.md for exact setup). Safe to run more often than that; it
-# just regenerates the same report from whatever ESPN returns at the time.
+# see README.md for exact setup). The intended workflow now is grabbing
+# fresh FantasyPros exports before each of those three runs, not just
+# Tuesday - see README's Phase 3 section. Safe to run more often than
+# that; it just regenerates the same report from whatever ESPN/FantasyPros
+# data is currently on disk.
 #
 # Structure (repo path, log file, branch guard, commit-only-if-changed,
 # abort loudly rather than push something broken) borrowed from the
@@ -40,14 +47,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Set-Location $Repo
-$changes = & $Git status --porcelain docs/index.html
+$changes = & $Git status --porcelain docs/index.html data/last_snapshot.json
 if (-not $changes) {
-    Log "No change in docs/index.html - nothing to commit. Done."
+    Log "No change in docs/index.html or data/last_snapshot.json - nothing to commit. Done."
     exit 0
 }
 
-Log "Committing and pushing docs/index.html"
-& $Git add docs/index.html *>> $LogFile
+Log "Committing and pushing docs/index.html + data/last_snapshot.json"
+& $Git add docs/index.html data/last_snapshot.json *>> $LogFile
 $dateStr = Get-Date -Format "yyyy-MM-dd HH:mm"
 & $Git commit -m "Automated weekly fantasy refresh: $dateStr" *>> $LogFile
 if ($LASTEXITCODE -ne 0) {

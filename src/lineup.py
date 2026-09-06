@@ -54,6 +54,12 @@ class RosterPlayer:
     # absent from that position's export) - never guessed or backfilled.
     fp_grade: str = ""  # FantasyPros' own start/sit letter grade, if ranked
     fp_proj: float | None = None  # FantasyPros' own point projection, if ranked
+    fp_move: dict | None = None  # {'text', 'dir', 'notable'} - how fp_rank
+    # has moved since the last report run (see snapshot.rank_move()), or
+    # None if there's nothing to compare. Attached by weekly_report.py,
+    # not computed here - lineup.py doesn't know about run history.
+    owned_move: dict | None = None  # same shape, for percent_owned
+    # (see snapshot.ownership_move())
 
     @property
     def currently_starting(self) -> bool:

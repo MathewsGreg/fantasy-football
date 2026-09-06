@@ -16,6 +16,15 @@ numbers as if they were equivalent. See README's Phase 3 section.
 
 Run via scripts/weekly_refresh.ps1 (Task Scheduler, 3x/week). Every run
 recomputes both sections regardless of which day it is.
+
+Every run also diffs against snapshot.py's saved numbers from the
+previous run, so each FantasyPros rank / ESPN ownership number shows how
+it's moved since last time (see attach_rank_moves()) - a move is a signal
+something happened (injury, role change, beat-writer report) worth going
+and checking the news for. Also flags, per position, if the FantasyPros
+source file is literally unchanged since last run (see
+snapshot.stale_positions()) - a "forgot to grab this morning's export"
+check, distinct from fp_blend.py's STALE_AFTER_DAYS age threshold.
 """
 
 from __future__ import annotations
@@ -28,6 +37,7 @@ from pathlib import Path
 from espn_client import get_league, find_team
 from espn_normalize import normalize_position, normalize_slot
 from fp_blend import load_blend
+import snapshot as snap
 from lineup import RosterPlayer, suggest_lineup, HARD_EXCLUDE_STATUSES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -184,6 +194,43 @@ def rank_waiver_targets(league, need: dict, blend, depth: dict = DEFAULT_WAIVER_
     return order, targets
 
 
+def _snapshot_id(p) -> str:
+    # RosterPlayer uses player_id (str, from ESPN's playerId); waiver-target
+    # Player objects use ESPN's own playerId directly - both same underlying
+    # ESPN ID, just different attribute names on the two object types.
+    return str(getattr(p, "playerId", None) if hasattr(p, "playerId") else p.player_id)
+
+
+def attach_rank_moves(roster: list[RosterPlayer], waiver_targets: dict, old_snapshot: dict) -> dict:
+    """Attaches fp_move/owned_move (see snapshot.rank_move/ownership_move)
+    to every roster and waiver-target player, comparing this run's
+    FantasyPros rank and ESPN percent_owned against old_snapshot (last
+    run's saved numbers) - a rank/ownership move is the signal that
+    something happened (injury, role change, beat-writer report) worth
+    going and checking the news for. Mutates the player objects in place
+    rather than threading deltas through render_html separately, matching
+    how attach_fp_ranks()/rank_waiver_targets() already attach FantasyPros
+    data directly onto these objects. Returns this run's snapshot, to be
+    saved (by main(), only after a successful run) as next run's
+    old_snapshot."""
+    new_snapshot: dict = {}
+
+    def track(p, percent_owned) -> None:
+        pid = _snapshot_id(p)
+        old = old_snapshot.get(pid)
+        p.fp_move = snap.rank_move(old, p.fp_rank)
+        p.owned_move = snap.ownership_move(old, percent_owned)
+        new_snapshot[pid] = snap.entry(p.fp_rank, percent_owned)
+
+    for p in roster:
+        track(p, p.percent_owned)
+    for targets in waiver_targets.values():
+        for fa in targets:
+            track(fa, getattr(fa, "percent_owned", None))
+
+    return new_snapshot
+
+
 # FantasyPros position-rank spots the free agent must beat your weakest
 # ranked bench player by before we bother suggesting the swap - same
 # "worth the trouble, not noise" reasoning the old ownership-gap threshold
@@ -290,7 +337,7 @@ def move_rationale(move: dict) -> str:
     )
 
 
-def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets, top_moves, blend=None) -> str:
+def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets, top_moves, blend=None, fp_unchanged_positions=None) -> str:
     template = (Path(__file__).parent / "report_template.html").read_text()
 
     def player_row(p):
@@ -298,12 +345,12 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         espn_proj = f"{p.projected_points:.1f}" if p.projected_points is not None else "—"
         return {
             "name": p.name, "pos": p.position, "team": p.pro_team,
-            "fp": fp, "fp_grade": p.fp_grade or "",
+            "fp": fp, "fp_grade": p.fp_grade or "", "fp_move": p.fp_move,
             "espn_proj": espn_proj, "status": p.injury_status,
         }
 
     starters = [
-        {"slot": slot.slot_name, **(player_row(slot.player) if slot.player else {"name": "(empty)", "pos": "", "team": "", "fp": "", "fp_grade": "", "espn_proj": "", "status": ""})}
+        {"slot": slot.slot_name, **(player_row(slot.player) if slot.player else {"name": "(empty)", "pos": "", "team": "", "fp": "", "fp_grade": "", "fp_move": None, "espn_proj": "", "status": ""})}
         for slot in lineup_result.starters
     ]
     bench = [player_row(p) for p in lineup_result.bench]
@@ -314,8 +361,10 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
                 "name": p.name, "team": p.proTeam,
                 "fp": f"{pos}{p.fp_rank}",
                 "fp_grade": getattr(p, "fp_grade", "") or "",
+                "fp_move": getattr(p, "fp_move", None),
                 "fp_proj": f"{p.fp_proj:.1f}" if getattr(p, "fp_proj", None) is not None else "—",
                 "espn_owned": f"{p.percent_owned:.0f}%" if (getattr(p, "percent_owned", None) is not None and p.percent_owned >= 0) else "—",
+                "owned_move": getattr(p, "owned_move", None),
                 "espn_proj": f"{p.projected_points:.1f}" if getattr(p, "projected_points", None) else "—",
                 "status": "" if (p.injuryStatus or "") in HEALTHY_STATUSES else p.injuryStatus,
             }
@@ -336,6 +385,7 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         "fp_as_of": blend.as_of_str if blend is not None else None,
         "fp_stale": blend.stale if blend is not None else None,
         "fp_stale_days": round(blend.age_days) if blend is not None else None,
+        "fp_unchanged_positions": fp_unchanged_positions or [],
         "top_moves": [move_rationale(m) for m in top_moves],
         "starters": starters,
         "bench": bench,
@@ -381,15 +431,34 @@ def main() -> None:
     waiver_order, waiver_targets = rank_waiver_targets(league, need, blend)
     top_moves = top_waiver_moves(lineup_result, waiver_order, waiver_targets)
 
+    old_snapshot = snap.load_snapshot()
+    new_player_snapshot = attach_rank_moves(roster, waiver_targets, old_snapshot["players"])
+
+    new_fp_sources = blend.sources if blend is not None else {}
+    # Distinct from blend.stale (an age threshold): this catches "the
+    # export I'm using is the exact same file as last run's" even when
+    # it isn't old enough to trip STALE_AFTER_DAYS - the intended workflow
+    # is grabbing fresh FantasyPros files each Tue/Thu/Sun morning before
+    # the scheduled run, and this is what flags a forgotten morning.
+    fp_unchanged_positions = snap.stale_positions(old_snapshot["fp_sources"], new_fp_sources)
+    if fp_unchanged_positions:
+        print(f"NOTE: FantasyPros source file unchanged since last report for: "
+              f"{', '.join(fp_unchanged_positions)} - did you forget to grab "
+              f"fresh exports for those positions this morning?")
+
     html = render_html(
         league.settings.name, me, week, lineup_result, opponent, my_proj, opp_proj,
-        need, waiver_order, waiver_targets, top_moves, blend,
+        need, waiver_order, waiver_targets, top_moves, blend, fp_unchanged_positions,
     )
 
     out_dir = ROOT / "docs"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "index.html"
     out_path.write_text(html)
+    # Only save the new snapshot once the report itself has written
+    # successfully - a failed run shouldn't overwrite good history that
+    # the next run needs to diff against.
+    snap.save_snapshot(new_player_snapshot, new_fp_sources)
     print(f"Wrote {out_path} (week {week}, {len(roster)} roster players, "
           f"{sum(len(v) for v in waiver_targets.values())} waiver candidates)")
 

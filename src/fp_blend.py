@@ -165,7 +165,7 @@ def _load_weekly_csv(path: Path, position: str) -> list[WeeklyRank]:
 
 
 class FantasyProsBlend:
-    def __init__(self, by_name_pos: dict, by_team_dst: dict, age_days: float, as_of: datetime):
+    def __init__(self, by_name_pos: dict, by_team_dst: dict, age_days: float, as_of: datetime, sources: dict):
         self.by_name_pos = by_name_pos
         self.by_team_dst = by_team_dst
         self.age_days = age_days
@@ -175,6 +175,13 @@ class FantasyProsBlend:
         # falling back to ESPN), so this is published on every report rather
         # than only surfaced once things cross STALE_AFTER_DAYS.
         self.as_of = as_of
+        # {position: {"path": str, "mtime": float, "year": int, "week": int}}
+        # for whichever file is currently selected per position - lets
+        # weekly_report.py/snapshot.py tell "no fresher export was grabbed
+        # since last run" apart from "it's simply been more than
+        # STALE_AFTER_DAYS days" (STALE_AFTER_DAYS is an age threshold;
+        # this is an exact same-file-as-last-time check).
+        self.sources = sources
 
     @property
     def stale(self) -> bool:
@@ -221,7 +228,12 @@ def load_blend(weekly_dir: Path = WEEKLY_DIR) -> FantasyProsBlend | None:
             else:
                 by_name_pos[(normalize_name(wr.player), position)] = wr
 
+    sources = {
+        position: {"path": str(path), "mtime": sort_key[2], "year": sort_key[0], "week": sort_key[1]}
+        for position, (sort_key, path) in best_by_position.items()
+    }
+
     oldest_mtime = min(mtimes)
     age_days = (datetime.now(timezone.utc).timestamp() - oldest_mtime) / 86400
     as_of = datetime.fromtimestamp(oldest_mtime, tz=timezone.utc)
-    return FantasyProsBlend(by_name_pos, by_team_dst, age_days, as_of)
+    return FantasyProsBlend(by_name_pos, by_team_dst, age_days, as_of, sources)

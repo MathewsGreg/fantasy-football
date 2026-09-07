@@ -342,15 +342,16 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
 
     def player_row(p):
         fp = f"{p.position}{p.fp_rank}" if p.fp_rank is not None else "—"
+        fp_proj = f"{p.fp_proj:.1f}" if p.fp_proj is not None else "—"
         espn_proj = f"{p.projected_points:.1f}" if p.projected_points is not None else "—"
         return {
             "name": p.name, "pos": p.position, "team": p.pro_team,
             "fp": fp, "fp_grade": p.fp_grade or "", "fp_move": p.fp_move,
-            "espn_proj": espn_proj, "status": p.injury_status,
+            "fp_proj": fp_proj, "espn_proj": espn_proj, "status": p.injury_status,
         }
 
     starters = [
-        {"slot": slot.slot_name, **(player_row(slot.player) if slot.player else {"name": "(empty)", "pos": "", "team": "", "fp": "", "fp_grade": "", "fp_move": None, "espn_proj": "", "status": ""})}
+        {"slot": slot.slot_name, **(player_row(slot.player) if slot.player else {"name": "(empty)", "pos": "", "team": "", "fp": "", "fp_grade": "", "fp_move": None, "fp_proj": "", "espn_proj": "", "status": ""})}
         for slot in lineup_result.starters
     ]
     bench = [player_row(p) for p in lineup_result.bench]

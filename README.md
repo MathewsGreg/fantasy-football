@@ -303,11 +303,15 @@ silently ignored.
 abbreviation for DST (ESPN says "Texans D/ST", FantasyPros says
 "Houston Texans" — matching on team code sidesteps that). Every starter,
 bench player, and Waiver Target row shows FantasyPros' position rank
-(and grade, when ranked) as the primary column, with ESPN's
-`percent_owned`/next-game projection alongside it as commentary — shown
-side by side, deliberately **not fused into one score**, since different
-scales would hide real disagreement between the two instead of
-surfacing it.
+(and grade, when ranked) as the primary column, **plus FantasyPros' own
+point projection right next to ESPN's** — same metric, same units, shown
+for both sources side by side specifically so you can compare a player's
+FantasyPros-forecasted points against his ESPN-forecasted points at a
+glance, whether he's in your lineup or on the waiver wire. Deliberately
+**not fused into one score** — different scales for rank/grade, and even
+the two projections are shown separately rather than averaged, since
+forcing them together would hide real disagreement between the two
+instead of surfacing it.
 
 **FantasyPros stays authoritative even when its data is stale — the
 report never silently falls back to ESPN's numbers.** Since

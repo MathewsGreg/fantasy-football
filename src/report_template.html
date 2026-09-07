@@ -102,7 +102,7 @@
   <div class="changes" id="changesBox"></div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Slot</th><th>Player</th><th>Team</th><th>FantasyPros</th><th>ESPN Proj</th></tr></thead>
+      <thead><tr><th>Slot</th><th>Player</th><th>Team</th><th>FantasyPros</th><th>FantasyPros Proj</th><th>ESPN Proj</th></tr></thead>
       <tbody id="startersBody"></tbody>
     </table>
   </div>
@@ -110,7 +110,7 @@
   <h2>Bench</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>FantasyPros</th><th>ESPN Proj</th></tr></thead>
+      <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>FantasyPros</th><th>FantasyPros Proj</th><th>ESPN Proj</th></tr></thead>
       <tbody id="benchBody"></tbody>
     </table>
   </div>
@@ -219,13 +219,14 @@
       '<td>' + p.name + statusTag + '</td>' +
       '<td>' + (p.team || "—") + '</td>' +
       '<td class="proj-cell">' + fpCell(p) + '</td>' +
+      '<td class="proj-cell">' + (p.fp_proj || "—") + '</td>' +
       '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
     startersBody.appendChild(tr);
   });
 
   var benchBody = document.getElementById("benchBody");
   if (!DATA.bench.length) {
-    benchBody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);font-style:italic;">Empty bench</td></tr>';
+    benchBody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);font-style:italic;">Empty bench</td></tr>';
   }
   DATA.bench.forEach(function (p) {
     var tr = document.createElement("tr");
@@ -235,6 +236,7 @@
       '<td>' + p.pos + '</td>' +
       '<td>' + (p.team || "—") + '</td>' +
       '<td class="proj-cell">' + fpCell(p) + '</td>' +
+      '<td class="proj-cell">' + (p.fp_proj || "—") + '</td>' +
       '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
     benchBody.appendChild(tr);
   });

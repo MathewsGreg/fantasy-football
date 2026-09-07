@@ -107,11 +107,18 @@ def ownership_move(old: dict | None, new_percent_owned: float | None) -> dict | 
     old_owned = old.get("percent_owned")
     if old_owned is None or old_owned < 0:
         return None
-    delta = round(new_percent_owned - old_owned, 1)
+    # Round to whole points BEFORE checking for zero - percent_owned drifts
+    # by small fractions constantly across ESPN's whole player pool
+    # (re-normalizes as everyone else's ownership changes too), and the
+    # displayed number is whole points (see espn_owned's ":.0f" in
+    # weekly_report.py) - rounding only the display while checking the
+    # unrounded/1-decimal delta produced meaningless "(+0)"/"(-0)" badges
+    # for real, confirmed against an actual second run.
+    delta = round(new_percent_owned - old_owned)
     if delta == 0:
         return None
     return {
-        "text": f"{'+' if delta > 0 else ''}{delta:.0f}",
+        "text": f"{'+' if delta > 0 else ''}{delta}",
         "dir": "up" if delta > 0 else "down",
         "notable": abs(delta) >= NOTABLE_OWNERSHIP_MOVE,
     }

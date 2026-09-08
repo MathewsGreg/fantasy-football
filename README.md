@@ -426,12 +426,15 @@ silently) on any failure.
 
 One-time setup:
 
-1. Clone this repo locally, e.g. to
-   `C:\Users\Diggs\Dropbox\PC\Documents\Claude\fantasy_football` (matches
-   the path `weekly_refresh.ps1` expects — edit `$Repo` at the top of
-   that script if you put it somewhere else).
-2. Create a dedicated venv (kept outside the Dropbox-synced folder to
-   avoid file-locking mid-install, same reasoning as the sibling MLB
+1. Clone this repo locally to
+   `C:\Users\Diggs\Documents\Claude\fantasy-football` (matches the path
+   `weekly_refresh.ps1`'s `$Repo` expects — edit `$Repo` at the top of
+   that script if you put it somewhere else; confirmed against the
+   actual local clone, since an earlier draft of this doc guessed a
+   different path — Dropbox-synced, with an underscore — that never
+   matched).
+2. Create a dedicated venv (kept outside the repo folder to avoid any
+   file-locking mid-install, same reasoning as the sibling MLB
    project's):
    ```
    "C:\Users\Diggs\AppData\Local\Programs\Python\Python312\python.exe" -m venv "C:\Users\Diggs\venvs\fantasy_football"
@@ -452,7 +455,7 @@ One-time setup:
      - Weekly, Sunday, 11:00 AM (start/sit ahead of the early/late
        Sunday windows, once most injury news is in)
    - **Actions** → New → Program/script: `powershell.exe`; Arguments:
-     `-ExecutionPolicy Bypass -File "C:\Users\Diggs\Dropbox\PC\Documents\Claude\fantasy_football\scripts\weekly_refresh.ps1"`
+     `-ExecutionPolicy Bypass -File "C:\Users\Diggs\Documents\Claude\fantasy-football\scripts\weekly_refresh.ps1"`
    - **Conditions**: uncheck "Start the task only if the computer is on
      AC power" if this runs on a laptop, or it'll silently skip on
      battery.

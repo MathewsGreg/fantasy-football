@@ -16,7 +16,7 @@
 # sibling MLB Elo project's daily_refresh.ps1, which uses the same
 # pattern for its own scheduled GitHub Pages publish.
 
-$Repo = "C:\Users\Diggs\Dropbox\PC\Documents\Claude\fantasy_football"
+$Repo = "C:\Users\Diggs\Documents\Claude\fantasy-football"
 $Python = "C:\Users\Diggs\venvs\fantasy_football\Scripts\python.exe"
 $Git = "C:\Program Files\Git\cmd\git.exe"
 

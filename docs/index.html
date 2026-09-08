@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weekly Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --bg: #f5f6f3; --surface: #ffffff; --surface-2: #eef1ec; --border: #dde1da;
+    --text: #1b2420; --text-muted: #5b6660;
+    --accent: #2f5d3a; --accent-contrast: #eaf3ec;
+    --warn: #b8722a; --warn-bg: #f7ead9;
+    --critical: #a33636; --critical-bg: #f6e1e1;
+    --info: #35618c; --info-bg: #e3edf5;
+    --shadow: 0 1px 2px rgba(20,30,20,.06), 0 4px 14px rgba(20,30,20,.05);
+    --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+    --font-body: "Public Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121814; --surface: #1b231d; --surface-2: #212b23; --border: #303c33;
+      --text: #e7ece7; --text-muted: #9aa79d;
+      --accent: #74c48a; --accent-contrast: #16261c;
+      --warn: #e0a458; --warn-bg: #3a2e1a;
+      --critical: #e28080; --critical-bg: #3a1f1f;
+      --info: #85b7de; --info-bg: #1c2c3a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121814; --surface: #1b231d; --surface-2: #212b23; --border: #303c33;
+    --text: #e7ece7; --text-muted: #9aa79d;
+    --accent: #74c48a; --accent-contrast: #16261c;
+    --warn: #e0a458; --warn-bg: #3a2e1a;
+    --critical: #e28080; --critical-bg: #3a1f1f;
+    --info: #85b7de; --info-bg: #1c2c3a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+  .app { max-width: 900px; margin: 0 auto; padding: 24px 16px 56px; }
+  .masthead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .brand { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-transform: uppercase; letter-spacing: .02em; color: var(--accent); }
+  .subhead { color: var(--text-muted); font-size: 13px; }
+  .matchup {
+    margin: 16px 0 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .matchup .side { text-align: center; }
+  .matchup .team-name { font-weight: 700; }
+  .matchup .proj { font-family: var(--font-mono); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .matchup .vs { color: var(--text-muted); font-family: var(--font-display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+
+  h2 { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .03em; font-size: 17px; color: var(--accent); margin: 28px 0 10px; }
+
+  .changes { background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+  .changes ul { margin: 0; padding-left: 18px; }
+  .changes li { margin: 4px 0; }
+  .changes .none { color: var(--text-muted); font-style: italic; }
+
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
+  table { border-collapse: collapse; width: 100%; min-width: 480px; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  tbody tr:last-child td { border-bottom: none; }
+  .slot-cell { font-family: var(--font-mono); color: var(--text-muted); font-size: 12px; }
+  .proj-cell { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; margin-left: 6px; text-transform: uppercase; }
+  .tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .tag.short { background: var(--warn-bg); color: var(--warn); }
+  .tag.ok { background: var(--surface-2); color: var(--text-muted); }
+  .tag.full { background: var(--surface-2); color: var(--text-muted); opacity: .7; }
+  .tag.moveup { background: var(--accent-contrast); color: var(--accent); }
+  .tag.movedown { background: var(--critical-bg); color: var(--critical); }
+  .move-note { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  .waiver-group { margin-bottom: 18px; }
+  .waiver-group h3 { font-family: var(--font-display); font-size: 14px; letter-spacing: .03em; margin: 0 0 6px; display: flex; align-items: center; }
+
+  footer.note { margin-top: 28px; font-size: 11px; color: var(--text-muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="masthead">
+    <div class="brand">Weekly Report</div>
+    <div class="subhead" id="subhead"></div>
+  </div>
+  <div class="subhead" id="fpNote" style="margin-top:2px;"></div>
+  <div class="subhead" id="fpUnchangedNote" style="margin-top:2px;" hidden></div>
+
+  <h2 style="margin-top:16px;">Top Waiver Moves</h2>
+  <div class="changes moves" id="topMovesBox"></div>
+
+  <div class="matchup" id="matchupBox"></div>
+  <div class="subhead" style="margin-bottom:16px;">Matchup totals are ESPN's own weekly projection.</div>
+
+  <h2>This Week's Lineup</h2>
+  <div class="changes" id="changesBox"></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Slot</th><th>Player</th><th>Team</th><th>FantasyPros</th><th>FantasyPros Proj</th><th>ESPN Proj</th></tr></thead>
+      <tbody id="startersBody"></tbody>
+    </table>
+  </div>
+
+  <h2>Bench</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>FantasyPros</th><th>FantasyPros Proj</th><th>ESPN Proj</th></tr></thead>
+      <tbody id="benchBody"></tbody>
+    </table>
+  </div>
+
+  <h2>Waiver Targets by Position</h2>
+  <div id="waiverBox"></div>
+
+  <footer class="note" id="footerNote"></footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var DATA = {"league_name": "Awesome-sauce", "team_name": "Mighty Wombats", "week": 1, "generated_at": "2026-09-08 19:05 UTC", "opponent": "Fiery Bulls", "my_projected": 109.2, "opp_projected": 104.4, "fp_loaded": true, "fp_as_of": "2026-09-08", "fp_stale": false, "fp_stale_days": 0, "fp_unchanged_positions": ["DST", "K", "QB", "RB", "TE", "WR"], "top_moves": [], "starters": [{"slot": "QB", "name": "Jalen Hurts", "pos": "QB", "team": "PHI", "fp": "QB4", "fp_grade": "A-", "fp_move": null, "fp_proj": "19.5", "espn_proj": "20.2", "status": ""}, {"slot": "RB1", "name": "D'Andre Swift", "pos": "RB", "team": "CHI", "fp": "RB14", "fp_grade": "B+", "fp_move": null, "fp_proj": "11.8", "espn_proj": "10.1", "status": "QUESTIONABLE"}, {"slot": "RB2", "name": "David Montgomery", "pos": "RB", "team": "HOU", "fp": "RB19", "fp_grade": "B", "fp_move": null, "fp_proj": "10.9", "espn_proj": "10.4", "status": ""}, {"slot": "WR1", "name": "Puka Nacua", "pos": "WR", "team": "LAR", "fp": "WR2", "fp_grade": "A+", "fp_move": null, "fp_proj": "12.9", "espn_proj": "16.4", "status": "QUESTIONABLE"}, {"slot": "WR2", "name": "A.J. Brown", "pos": "WR", "team": "NE", "fp": "WR11", "fp_grade": "A", "fp_move": null, "fp_proj": "10.0", "espn_proj": "11.4", "status": ""}, {"slot": "TE", "name": "Brock Bowers", "pos": "TE", "team": "LV", "fp": "TE1", "fp_grade": "A+", "fp_move": null, "fp_proj": "10.1", "espn_proj": "12.3", "status": ""}, {"slot": "K", "name": "Cam Little", "pos": "K", "team": "JAX", "fp": "K4", "fp_grade": "B-", "fp_move": null, "fp_proj": "8.9", "espn_proj": "10.7", "status": ""}, {"slot": "DST", "name": "Texans D/ST", "pos": "DST", "team": "HOU", "fp": "DST7", "fp_grade": "B", "fp_move": null, "fp_proj": "7.2", "espn_proj": "7.4", "status": ""}, {"slot": "FLEX", "name": "Tee Higgins", "pos": "WR", "team": "CIN", "fp": "WR14", "fp_grade": "A", "fp_move": null, "fp_proj": "9.9", "espn_proj": "10.2", "status": "QUESTIONABLE"}], "bench": [{"name": "Tony Pollard", "pos": "RB", "team": "TEN", "fp": "RB28", "fp_grade": "C+", "fp_move": null, "fp_proj": "9.8", "espn_proj": "10.1", "status": ""}, {"name": "Caleb Williams", "pos": "QB", "team": "CHI", "fp": "QB7", "fp_grade": "B", "fp_move": null, "fp_proj": "18.4", "espn_proj": "15.1", "status": ""}, {"name": "Brian Thomas Jr.", "pos": "WR", "team": "JAX", "fp": "WR36", "fp_grade": "C+", "fp_move": null, "fp_proj": "7.1", "espn_proj": "7.5", "status": ""}, {"name": "Dalton Kincaid", "pos": "TE", "team": "BUF", "fp": "TE14", "fp_grade": "D+", "fp_move": null, "fp_proj": "5.7", "espn_proj": "6.0", "status": ""}, {"name": "Quentin Johnston", "pos": "WR", "team": "LAC", "fp": "WR33", "fp_grade": "B-", "fp_move": null, "fp_proj": "7.4", "espn_proj": "8.1", "status": ""}, {"name": "Zach Charbonnet", "pos": "RB", "team": "SEA", "fp": "\u2014", "fp_grade": "", "fp_move": null, "fp_proj": "\u2014", "espn_proj": "0.0", "status": "OUT"}, {"name": "Jordan Mason", "pos": "RB", "team": "MIN", "fp": "RB33", "fp_grade": "C", "fp_move": null, "fp_proj": "8.0", "espn_proj": "7.7", "status": ""}], "changes": ["D'Andre Swift is Questionable \u2014 worth a game-time check before locking RB1.", "Puka Nacua is Questionable \u2014 worth a game-time check before locking WR1.", "Tee Higgins is Questionable \u2014 worth a game-time check before locking FLEX."], "need": {"QB": "full", "RB": "full", "WR": "full", "TE": "full", "K": "full", "DST": "full"}, "waiver_order": ["QB", "RB", "WR", "TE", "K", "DST"], "waivers": {"QB": [{"name": "Malik Willis", "team": "MIA", "fp": "QB18", "fp_grade": "C-", "fp_move": null, "fp_proj": "16.3", "espn_owned": "21%", "owned_move": null, "espn_proj": "14.2", "status": ""}, {"name": "Jordan Love", "team": "GB", "fp": "QB21", "fp_grade": "D", "fp_move": null, "fp_proj": "15.9", "espn_owned": "43%", "owned_move": null, "espn_proj": "14.3", "status": ""}, {"name": "Sam Darnold", "team": "SEA", "fp": "QB22", "fp_grade": "D-", "fp_move": null, "fp_proj": "15.7", "espn_owned": "27%", "owned_move": null, "espn_proj": "13.0", "status": ""}, {"name": "Daniel Jones", "team": "IND", "fp": "QB23", "fp_grade": "F", "fp_move": null, "fp_proj": "15.6", "espn_owned": "37%", "owned_move": null, "espn_proj": "13.8", "status": ""}, {"name": "Bryce Young", "team": "CAR", "fp": "QB24", "fp_grade": "F", "fp_move": null, "fp_proj": "15.4", "espn_owned": "11%", "owned_move": null, "espn_proj": "14.1", "status": ""}], "RB": [{"name": "Chris Rodriguez Jr.", "team": "JAX", "fp": "RB37", "fp_grade": "C-", "fp_move": null, "fp_proj": "7.3", "espn_owned": "32%", "owned_move": null, "espn_proj": "3.6", "status": ""}, {"name": "Mike Washington Jr.", "team": "LV", "fp": "RB43", "fp_grade": "D", "fp_move": null, "fp_proj": "6.2", "espn_owned": "40%", "owned_move": null, "espn_proj": "5.3", "status": ""}, {"name": "Woody Marks", "team": "HOU", "fp": "RB44", "fp_grade": "D", "fp_move": null, "fp_proj": "5.9", "espn_owned": "60%", "owned_move": null, "espn_proj": "6.6", "status": ""}, {"name": "Tyjae Spears", "team": "TEN", "fp": "RB46", "fp_grade": "D-", "fp_move": null, "fp_proj": "5.6", "espn_owned": "56%", "owned_move": null, "espn_proj": "6.2", "status": ""}, {"name": "Keaton Mitchell", "team": "LAC", "fp": "RB47", "fp_grade": "D-", "fp_move": null, "fp_proj": "5.3", "espn_owned": "22%", "owned_move": null, "espn_proj": "4.0", "status": "QUESTIONABLE"}, {"name": "Brian Robinson Jr.", "team": "ATL", "fp": "RB48", "fp_grade": "D-", "fp_move": null, "fp_proj": "5.2", "espn_owned": "27%", "owned_move": null, "espn_proj": "4.3", "status": ""}, {"name": "Dylan Sampson", "team": "CLE", "fp": "RB49", "fp_grade": "F", "fp_move": null, "fp_proj": "5.1", "espn_owned": "20%", "owned_move": null, "espn_proj": "3.6", "status": ""}, {"name": "Braelon Allen", "team": "NYJ", "fp": "RB50", "fp_grade": "F", "fp_move": null, "fp_proj": "4.9", "espn_owned": "13%", "owned_move": null, "espn_proj": "3.6", "status": ""}, {"name": "Tank Bigsby", "team": "PHI", "fp": "RB51", "fp_grade": "F", "fp_move": null, "fp_proj": "4.7", "espn_owned": "19%", "owned_move": null, "espn_proj": "3.6", "status": ""}, {"name": "George Holani", "team": "SEA", "fp": "RB52", "fp_grade": "F", "fp_move": null, "fp_proj": "4.7", "espn_owned": "4%", "owned_move": null, "espn_proj": "5.3", "status": ""}], "WR": [{"name": "Jayden Reed", "team": "GB", "fp": "WR39", "fp_grade": "C+", "fp_move": null, "fp_proj": "6.8", "espn_owned": "72%", "owned_move": null, "espn_proj": "7.4", "status": ""}, {"name": "Jordan Addison", "team": "MIN", "fp": "WR40", "fp_grade": "C+", "fp_move": null, "fp_proj": "6.6", "espn_owned": "80%", "owned_move": null, "espn_proj": "7.6", "status": ""}, {"name": "Jakobi Meyers", "team": "JAX", "fp": "WR43", "fp_grade": "C", "fp_move": null, "fp_proj": "6.4", "espn_owned": "80%", "owned_move": null, "espn_proj": "7.9", "status": "QUESTIONABLE"}, {"name": "Jalen Coker", "team": "CAR", "fp": "WR45", "fp_grade": "C", "fp_move": null, "fp_proj": "6.4", "espn_owned": "51%", "owned_move": null, "espn_proj": "7.2", "status": ""}, {"name": "KC Concepcion", "team": "CLE", "fp": "WR49", "fp_grade": "C", "fp_move": null, "fp_proj": "6.1", "espn_owned": "65%", "owned_move": null, "espn_proj": "6.9", "status": ""}, {"name": "Tre Tucker", "team": "LV", "fp": "WR53", "fp_grade": "C-", "fp_move": null, "fp_proj": "5.8", "espn_owned": "27%", "owned_move": null, "espn_proj": "7.1", "status": ""}, {"name": "Khalil Shakir", "team": "BUF", "fp": "WR54", "fp_grade": "C-", "fp_move": null, "fp_proj": "5.6", "espn_owned": "70%", "owned_move": null, "espn_proj": "7.0", "status": "QUESTIONABLE"}, {"name": "Rashid Shaheed", "team": "SEA", "fp": "WR55", "fp_grade": "C-", "fp_move": null, "fp_proj": "5.6", "espn_owned": "44%", "owned_move": null, "espn_proj": "5.6", "status": ""}, {"name": "Makai Lemon", "team": "PHI", "fp": "WR57", "fp_grade": "D+", "fp_move": null, "fp_proj": "5.5", "espn_owned": "74%", "owned_move": null, "espn_proj": "6.1", "status": ""}, {"name": "Adonai Mitchell", "team": "NYJ", "fp": "WR58", "fp_grade": "D+", "fp_move": null, "fp_proj": "5.5", "espn_owned": "16%", "owned_move": null, "espn_proj": "5.8", "status": ""}], "TE": [{"name": "Dalton Schultz", "team": "HOU", "fp": "TE16", "fp_grade": "D", "fp_move": null, "fp_proj": "5.5", "espn_owned": "18%", "owned_move": null, "espn_proj": "6.2", "status": ""}, {"name": "Hunter Henry", "team": "NE", "fp": "TE17", "fp_grade": "D", "fp_move": null, "fp_proj": "5.5", "espn_owned": "56%", "owned_move": null, "espn_proj": "6.1", "status": ""}, {"name": "Greg Dulcich", "team": "MIA", "fp": "TE20", "fp_grade": "F", "fp_move": null, "fp_proj": "5.0", "espn_owned": "3%", "owned_move": null, "espn_proj": "5.2", "status": ""}, {"name": "T.J. Hockenson", "team": "MIN", "fp": "TE21", "fp_grade": "F", "fp_move": null, "fp_proj": "4.9", "espn_owned": "60%", "owned_move": null, "espn_proj": "6.2", "status": ""}, {"name": "AJ Barner", "team": "SEA", "fp": "TE22", "fp_grade": "D-", "fp_move": null, "fp_proj": "4.9", "espn_owned": "7%", "owned_move": null, "espn_proj": "4.7", "status": ""}], "K": [{"name": "Evan McPherson", "team": "CIN", "fp": "K6", "fp_grade": "C+", "fp_move": null, "fp_proj": "8.4", "espn_owned": "21%", "owned_move": null, "espn_proj": "10.2", "status": ""}, {"name": "Tyler Loop", "team": "BAL", "fp": "K8", "fp_grade": "C+", "fp_move": null, "fp_proj": "8.1", "espn_owned": "52%", "owned_move": null, "espn_proj": "10.1", "status": ""}, {"name": "Chris Boswell", "team": "PIT", "fp": "K10", "fp_grade": "C", "fp_move": null, "fp_proj": "8.0", "espn_owned": "38%", "owned_move": null, "espn_proj": "10.9", "status": ""}, {"name": "Cairo Santos", "team": "CHI", "fp": "K12", "fp_grade": "C", "fp_move": null, "fp_proj": "7.9", "espn_owned": "34%", "owned_move": null, "espn_proj": "10.0", "status": ""}, {"name": "Jake Elliott", "team": "PHI", "fp": "K15", "fp_grade": "C", "fp_move": null, "fp_proj": "7.5", "espn_owned": "8%", "owned_move": null, "espn_proj": "10.0", "status": ""}], "DST": [{"name": "Chargers D/ST", "team": "LAC", "fp": "DST2", "fp_grade": "A", "fp_move": null, "fp_proj": "8.2", "espn_owned": "55%", "owned_move": null, "espn_proj": "8.8", "status": ""}, {"name": "Lions D/ST", "team": "DET", "fp": "DST11", "fp_grade": "B-", "fp_move": null, "fp_proj": "6.6", "espn_owned": "72%", "owned_move": null, "espn_proj": "8.8", "status": ""}, {"name": "Titans D/ST", "team": "TEN", "fp": "DST12", "fp_grade": "C+", "fp_move": null, "fp_proj": "6.5", "espn_owned": "7%", "owned_move": null, "espn_proj": "8.8", "status": ""}, {"name": "Bills D/ST", "team": "BUF", "fp": "DST13", "fp_grade": "C", "fp_move": null, "fp_proj": "6.5", "espn_owned": "5%", "owned_move": null, "espn_proj": "6.7", "status": ""}, {"name": "Cowboys D/ST", "team": "DAL", "fp": "DST14", "fp_grade": "C", "fp_move": null, "fp_proj": "6.5", "espn_owned": "12%", "owned_move": null, "espn_proj": "7.1", "status": ""}]}};
+
+  document.getElementById("subhead").textContent =
+    DATA.league_name + " — " + DATA.team_name + " — Week " + DATA.week;
+
+  var fpNote = document.getElementById("fpNote");
+  if (!DATA.fp_loaded) {
+    fpNote.textContent = "No FantasyPros weekly data loaded (data/weekly/*.csv) — FantasyPros is the authoritative source for lineup order and waiver targets now, so neither can be ranked until an export is added. See README's Phase 3 section.";
+    fpNote.style.color = "var(--critical)";
+  } else {
+    var days = DATA.fp_stale_days + (DATA.fp_stale_days === 1 ? " day" : " days");
+    fpNote.textContent = "FantasyPros data last refreshed " + DATA.fp_as_of + " (" + days + " ago)" +
+      (DATA.fp_stale ? " — stale, consider re-exporting, but still used as the authoritative source rather than falling back to ESPN." : ".");
+    fpNote.style.color = DATA.fp_stale ? "var(--warn)" : "var(--text-muted)";
+  }
+
+  var fpUnchangedNote = document.getElementById("fpUnchangedNote");
+  if (DATA.fp_unchanged_positions && DATA.fp_unchanged_positions.length) {
+    fpUnchangedNote.hidden = false;
+    fpUnchangedNote.textContent = "No fresher FantasyPros export detected since your last report for: " +
+      DATA.fp_unchanged_positions.join(", ") + " — did you forget to grab this morning's files for " +
+      (DATA.fp_unchanged_positions.length === 1 ? "that position" : "those positions") + "?";
+    fpUnchangedNote.style.color = "var(--warn)";
+  }
+
+  var topMovesBox = document.getElementById("topMovesBox");
+  if (DATA.top_moves && DATA.top_moves.length) {
+    var ol = document.createElement("ol");
+    ol.style.margin = "0";
+    ol.style.paddingLeft = "18px";
+    DATA.top_moves.forEach(function (m) {
+      var li = document.createElement("li");
+      li.style.margin = "4px 0";
+      li.textContent = m;
+      ol.appendChild(li);
+    });
+    topMovesBox.appendChild(ol);
+  } else {
+    topMovesBox.innerHTML = '<div class="none">No waiver moves clearly worth making this week — nothing FantasyPros ranks beats your bench by enough to be worth a roster spot.</div>';
+  }
+
+  var matchupBox = document.getElementById("matchupBox");
+  if (DATA.opponent) {
+    matchupBox.innerHTML =
+      '<div class="side"><div class="team-name">' + DATA.team_name + '</div><div class="proj">' + (DATA.my_projected != null ? DATA.my_projected : "—") + '</div></div>' +
+      '<div class="vs">vs</div>' +
+      '<div class="side"><div class="team-name">' + DATA.opponent + '</div><div class="proj">' + (DATA.opp_projected != null ? DATA.opp_projected : "—") + '</div></div>';
+  } else {
+    matchupBox.innerHTML = '<div style="color:var(--text-muted)">Bye week — no matchup.</div>';
+  }
+
+  var changesBox = document.getElementById("changesBox");
+  if (DATA.changes && DATA.changes.length) {
+    var ul = document.createElement("ul");
+    DATA.changes.forEach(function (c) {
+      var li = document.createElement("li");
+      li.textContent = c;
+      ul.appendChild(li);
+    });
+    changesBox.appendChild(ul);
+  } else {
+    changesBox.innerHTML = '<div class="none">No changes suggested — your current lineup already matches FantasyPros\' ranking.</div>';
+  }
+
+  function moveBadge(move) {
+    // Inline "(+3)"/"(-5)"/"(NEW)" next to a rank/ownership number, showing
+    // how it's moved since the last report - a move at or past the
+    // notable threshold (see snapshot.py) gets a colored pill; a smaller
+    // move still shows, just quieter, so nothing is hidden, only
+    // de-emphasized.
+    if (!move) return "";
+    if (move.dir === "new") {
+      return ' <span class="tag warn">(NEW)</span>';
+    }
+    var text = "(" + move.text + ")";
+    if (move.notable) {
+      return ' <span class="tag ' + (move.dir === "down" ? "movedown" : "moveup") + '">' + text + '</span>';
+    }
+    return ' <span class="move-note">' + text + '</span>';
+  }
+
+  function fpCell(p) {
+    var base = p.fp_grade ? p.fp + ' (' + p.fp_grade + ')' : (p.fp || "—");
+    return base + moveBadge(p.fp_move);
+  }
+
+  var startersBody = document.getElementById("startersBody");
+  DATA.starters.forEach(function (p) {
+    var tr = document.createElement("tr");
+    var statusTag = p.status ? '<span class="tag warn">' + p.status + '</span>' : "";
+    tr.innerHTML =
+      '<td class="slot-cell">' + p.slot + '</td>' +
+      '<td>' + p.name + statusTag + '</td>' +
+      '<td>' + (p.team || "—") + '</td>' +
+      '<td class="proj-cell">' + fpCell(p) + '</td>' +
+      '<td class="proj-cell">' + (p.fp_proj || "—") + '</td>' +
+      '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
+    startersBody.appendChild(tr);
+  });
+
+  var benchBody = document.getElementById("benchBody");
+  if (!DATA.bench.length) {
+    benchBody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);font-style:italic;">Empty bench</td></tr>';
+  }
+  DATA.bench.forEach(function (p) {
+    var tr = document.createElement("tr");
+    var statusTag = p.status ? '<span class="tag warn">' + p.status + '</span>' : "";
+    tr.innerHTML =
+      '<td>' + p.name + statusTag + '</td>' +
+      '<td>' + p.pos + '</td>' +
+      '<td>' + (p.team || "—") + '</td>' +
+      '<td class="proj-cell">' + fpCell(p) + '</td>' +
+      '<td class="proj-cell">' + (p.fp_proj || "—") + '</td>' +
+      '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
+    benchBody.appendChild(tr);
+  });
+
+  var waiverBox = document.getElementById("waiverBox");
+  DATA.waiver_order.forEach(function (pos) {
+    var need = DATA.need[pos] || "ok";
+    var group = document.createElement("div");
+    group.className = "waiver-group";
+    var h3 = document.createElement("h3");
+    h3.innerHTML = pos + '<span class="tag ' + need + '">' + need + '</span>';
+    group.appendChild(h3);
+
+    var wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    var table = document.createElement("table");
+    table.innerHTML = '<thead><tr><th>Player</th><th>Team</th><th>FantasyPros Rank</th><th>FantasyPros Proj</th><th>ESPN Owned</th><th>ESPN Proj</th></tr></thead>';
+    var tbody = document.createElement("tbody");
+    var list = DATA.waivers[pos] || [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);font-style:italic;">' +
+        (DATA.fp_loaded ? "No FantasyPros-ranked free agents at this position this week." : "No FantasyPros data loaded — see the note above.") +
+        '</td></tr>';
+    }
+    list.forEach(function (p) {
+      var tr = document.createElement("tr");
+      var statusTag = p.status ? '<span class="tag warn">' + p.status + '</span>' : "";
+      tr.innerHTML =
+        '<td>' + p.name + statusTag + '</td>' +
+        '<td>' + (p.team || "—") + '</td>' +
+        '<td class="proj-cell">' + fpCell(p) + '</td>' +
+        '<td class="proj-cell">' + p.fp_proj + '</td>' +
+        '<td class="proj-cell">' + p.espn_owned + moveBadge(p.owned_move) + '</td>' +
+        '<td class="proj-cell">' + p.espn_proj + '</td>';
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    group.appendChild(wrap);
+    waiverBox.appendChild(group);
+  });
+
+  document.getElementById("footerNote").textContent =
+    "Generated " + DATA.generated_at + " — lineup order and waiver targets set by FantasyPros' weekly rankings, cross-referenced against live ESPN roster/injury/matchup data. Derived analysis only — not a republished rankings table.";
+})();
+</script>
+</body>
+</html>

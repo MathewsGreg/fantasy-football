@@ -72,17 +72,28 @@ def stale_positions(old_sources: dict, new_sources: dict) -> list[str]:
     return stale
 
 
-def entry(fp_rank: int | None, percent_owned: float | None) -> dict:
-    return {"fp_rank": fp_rank, "percent_owned": percent_owned}
+def entry(fp_rank: int | None, fp_year: int | None, fp_week: int | None, percent_owned: float | None) -> dict:
+    return {"fp_rank": fp_rank, "fp_year": fp_year, "fp_week": fp_week, "percent_owned": percent_owned}
 
 
-def rank_move(old: dict | None, new_fp_rank: int | None) -> dict | None:
+def rank_move(old: dict | None, new_fp_rank: int | None, new_fp_year: int | None, new_fp_week: int | None) -> dict | None:
     """{'text': '+3'/'-5', 'dir': 'up'/'down', 'notable': bool} describing
     how new_fp_rank compares to the previous snapshot, 'new' if he wasn't
     ranked last time but is now (the clearest "something changed" signal
     there is), or None if there's nothing to compare (first time this
-    player's ever been snapshotted, rank unchanged, or still unranked)."""
-    if old is None or new_fp_rank is None:
+    player's ever been snapshotted, rank unchanged, still unranked, or -
+    critically - the previous snapshot is from a DIFFERENT FantasyPros
+    week). A position rank is only meaningful relative to other ranks from
+    the same week - "RB37 in Week 1" and "RB37 in Week 2" are unrelated
+    numbers (entirely different matchups), so comparing across a week
+    boundary would report a large, completely meaningless "move" for
+    nearly every player the moment a new week's export replaces the old
+    one. Also refuses to compare if either side's week is unknown (a
+    legacy snapshot saved before this field existed) - safer to show
+    nothing for one run than to risk a false comparison."""
+    if old is None or new_fp_rank is None or new_fp_year is None or new_fp_week is None:
+        return None
+    if old.get("fp_year") != new_fp_year or old.get("fp_week") != new_fp_week:
         return None
     old_rank = old.get("fp_rank")
     if old_rank is None:

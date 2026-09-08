@@ -383,10 +383,31 @@ file could be perfectly fresh by that measure and still be the same file
 you used Tuesday, if Thursday's export never happened. See
 `snapshot.stale_positions()`.
 
-Not yet exercised against real data as of this writing — same caveat as
-the sourcing flip itself: built and unit-tested with fabricated
-snapshots, not yet confirmed against a real two-run sequence with a real
-FantasyPros re-export in between.
+**A move is only computed within the same FantasyPros week.** A position
+rank is only meaningful relative to other ranks from the same week — "RB37
+in Week 1" and "RB37 in Week 2" are two completely unrelated matchup-based
+rankings, not two points on the same scale, so diffing across a week
+boundary would report a large, meaningless "move" for nearly every player
+the moment a new week's export replaces the old one (a defense playing a
+tough Week 1 matchup and an easy Week 2 one might jump 10 spots for a
+reason that has nothing to do with anything worth checking the news for).
+Every player carries the `(year, week)` of whichever FantasyPros file his
+rank came from (attached even when he's unranked, so a same-week
+unranked→ranked transition still correctly fires `(NEW)`); `rank_move()`
+in `snapshot.py` refuses to compare two numbers unless both are from the
+identical week, showing nothing rather than a false signal. ESPN's
+`percent_owned` isn't week-scoped this way and keeps comparing continuously
+across the boundary, since ownership is a rolling season-long stat, not
+tied to a specific week's matchups.
+
+Confirmed against several consecutive real days (Sept 6-8, 2026) —
+correctly caught real rank/ownership movement, correctly stayed quiet on
+noise, and correctly flagged a forgotten re-export — all still within
+Week 1. The week-boundary guard itself is unit-tested (simulated Week 1 →
+Week 2 rollover, and a same-week unranked→ranked transition) but hasn't
+yet been exercised by an actual Week 1 → Week 2 rollover with real
+FantasyPros data — worth watching the first Monday/Tuesday of Week 2 to
+confirm no moves get reported for anyone purely from the week changing.
 
 ### Publishing it (GitHub Pages, one-time)
 

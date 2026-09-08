@@ -116,10 +116,21 @@ def attach_fp_ranks(roster: list[RosterPlayer], blend) -> None:
     FantasyPros doesn't rank (no CSVs loaded at all, or genuinely absent
     from that position's export, e.g. a deep bench stash) rather than
     guessing - suggest_lineup() falls back to ESPN's projection only
-    among that unranked subset, never to override a rank that exists."""
+    among that unranked subset, never to override a rank that exists.
+
+    fp_year/fp_week get attached even for an UNRANKED player, from
+    whichever (year, week) file is currently active for his position -
+    snapshot.rank_move() needs this "context week" on both ranked and
+    unranked players alike, so it can still recognize a same-week
+    unranked-to-ranked transition as NEW while refusing to compare
+    across an actual week boundary (see snapshot.py)."""
     if blend is None:
         return
     for p in roster:
+        source = blend.sources.get(p.position)
+        if source is not None:
+            p.fp_year = source["year"]
+            p.fp_week = source["week"]
         fp = blend.lookup(p.name, p.position, p.pro_team)
         if fp is not None:
             p.fp_rank = fp.rank
@@ -188,6 +199,7 @@ def rank_waiver_targets(league, need: dict, blend, depth: dict = DEFAULT_WAIVER_
             if fp is None:
                 continue
             fa.fp_rank, fa.fp_grade, fa.fp_proj = fp.rank, fp.grade, fp.proj_fpts
+            fa.fp_year, fa.fp_week = fp.year, fp.week
             ranked.append(fa)
         ranked.sort(key=lambda p: p.fp_rank)
         targets[pos] = ranked[:depth.get(pos, 8)]
@@ -218,9 +230,9 @@ def attach_rank_moves(roster: list[RosterPlayer], waiver_targets: dict, old_snap
     def track(p, percent_owned) -> None:
         pid = _snapshot_id(p)
         old = old_snapshot.get(pid)
-        p.fp_move = snap.rank_move(old, p.fp_rank)
+        p.fp_move = snap.rank_move(old, p.fp_rank, p.fp_year, p.fp_week)
         p.owned_move = snap.ownership_move(old, percent_owned)
-        new_snapshot[pid] = snap.entry(p.fp_rank, percent_owned)
+        new_snapshot[pid] = snap.entry(p.fp_rank, p.fp_year, p.fp_week, percent_owned)
 
     for p in roster:
         track(p, p.percent_owned)

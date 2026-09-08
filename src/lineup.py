@@ -54,6 +54,11 @@ class RosterPlayer:
     # absent from that position's export) - never guessed or backfilled.
     fp_grade: str = ""  # FantasyPros' own start/sit letter grade, if ranked
     fp_proj: float | None = None  # FantasyPros' own point projection, if ranked
+    fp_year: int | None = None  # (year, week) of the FantasyPros export
+    fp_week: int | None = None  # fp_rank came from - a rank is only
+    # meaningful relative to OTHER ranks from the same week (see
+    # WeeklyRank in fp_blend.py), so snapshot.py needs this to avoid
+    # reporting a "move" that's really just two different weeks' rankings.
     fp_move: dict | None = None  # {'text', 'dir', 'notable'} - how fp_rank
     # has moved since the last report run (see snapshot.rank_move()), or
     # None if there's nothing to compare. Attached by weekly_report.py,

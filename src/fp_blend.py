@@ -123,6 +123,12 @@ class WeeklyRank:
     opponent: str
     grade: str  # 'A+' .. 'F', FantasyPros' own start/sit call
     proj_fpts: float | None
+    year: int  # from the filename - which week's export this rank came
+    week: int  # from. A position rank is only meaningful relative to
+    # OTHER ranks from the same (year, week): "RB37 in Week 1" and
+    # "RB37 in Week 2" are unrelated numbers (different matchups entirely),
+    # so snapshot.py's rank_move() uses this to refuse to compute a "move"
+    # across a week boundary rather than reporting a meaningless jump.
 
 
 def _to_float(value: str) -> float | None:
@@ -135,7 +141,7 @@ def _to_float(value: str) -> float | None:
         return None
 
 
-def _load_weekly_csv(path: Path, position: str) -> list[WeeklyRank]:
+def _load_weekly_csv(path: Path, position: str, year: int, week: int) -> list[WeeklyRank]:
     with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:
@@ -160,6 +166,8 @@ def _load_weekly_csv(path: Path, position: str) -> list[WeeklyRank]:
                 opponent=(row.get(header_map.get("opponent", ""), "") or "").strip(),
                 grade=(row.get(header_map.get("grade", ""), "") or "").strip(),
                 proj_fpts=_to_float(row.get(header_map.get("proj_fpts", ""), "")),
+                year=year,
+                week=week,
             ))
     return rows
 
@@ -221,8 +229,9 @@ def load_blend(weekly_dir: Path = WEEKLY_DIR) -> FantasyProsBlend | None:
     by_name_pos, by_team_dst = {}, {}
     mtimes = []
     for position, (sort_key, path) in best_by_position.items():
-        mtimes.append(sort_key[2])
-        for wr in _load_weekly_csv(path, position):
+        wr_year, wr_week, mtime = sort_key
+        mtimes.append(mtime)
+        for wr in _load_weekly_csv(path, position, wr_year, wr_week):
             if position == "DST":
                 by_team_dst[wr.team.upper()] = wr
             else:

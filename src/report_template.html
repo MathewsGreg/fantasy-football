@@ -115,6 +115,14 @@
     </table>
   </div>
 
+  <h2 id="irHeading" hidden>IR</h2>
+  <div class="table-wrap" id="irWrap" hidden>
+    <table>
+      <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th>FantasyPros</th><th>FantasyPros Proj</th><th>ESPN Proj</th></tr></thead>
+      <tbody id="irBody"></tbody>
+    </table>
+  </div>
+
   <h2>Waiver Targets by Position</h2>
   <div id="waiverBox"></div>
 
@@ -240,6 +248,24 @@
       '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
     benchBody.appendChild(tr);
   });
+
+  if (DATA.ir && DATA.ir.length) {
+    document.getElementById("irHeading").hidden = false;
+    document.getElementById("irWrap").hidden = false;
+    var irBody = document.getElementById("irBody");
+    DATA.ir.forEach(function (p) {
+      var tr = document.createElement("tr");
+      var statusTag = p.status ? '<span class="tag warn">' + p.status + '</span>' : "";
+      tr.innerHTML =
+        '<td>' + p.name + statusTag + '</td>' +
+        '<td>' + p.pos + '</td>' +
+        '<td>' + (p.team || "—") + '</td>' +
+        '<td class="proj-cell">' + fpCell(p) + '</td>' +
+        '<td class="proj-cell">' + (p.fp_proj || "—") + '</td>' +
+        '<td class="proj-cell">' + (p.espn_proj || "—") + '</td>';
+      irBody.appendChild(tr);
+    });
+  }
 
   var waiverBox = document.getElementById("waiverBox");
   DATA.waiver_order.forEach(function (pos) {

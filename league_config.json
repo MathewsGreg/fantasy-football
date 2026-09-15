@@ -23,6 +23,7 @@
     "K": 1,
     "DST": 1
   },
+  "ir_slots": 2,
   "flex_eligible": ["RB", "WR", "TE"],
   "flex_split_weights": {
     "RB": 0.55,

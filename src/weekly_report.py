@@ -288,7 +288,17 @@ def top_waiver_moves(lineup_result, waiver_order, waiver_targets, max_moves: int
     return moves[:max_moves]
 
 
-def move_rationale(move: dict) -> str:
+def move_rationale(move: dict, ir_slots_available: int = 0) -> tuple[str, int]:
+    """Returns (rationale text, ir_slots_available after this move) -
+    ir_slots_available is a running count threaded across the whole Top
+    Waiver Moves list (see render_html), since two moves in the same
+    report can't both claim the same free IR slot. Only frames a drop as
+    a free IR stash when a real slot is actually open right now -
+    confirmed against a real league where a suggestion claimed an
+    IR-eligible bench player could be stashed "at no cost" while both of
+    that league's 2 IR slots were already accounted for (one already
+    occupied, one claimed by a higher-priority move in the same list),
+    which was actively misleading."""
     fa, drop, pos = move["add"], move["drop"], move["pos"]
     fa_status = "" if (fa.injuryStatus or "") in HEALTHY_STATUSES else fa.injuryStatus
 
@@ -315,13 +325,14 @@ def move_rationale(move: dict) -> str:
         espn_bits.append(f"{drop.name} {drop.percent_owned:.0f}% owned")
     espn_suffix = f" (ESPN: {'; '.join(espn_bits)}.)" if espn_bits else ""
 
-    if drop.ir_eligible:
-        # Your league's own IR rules already qualify this player - stashing
-        # him there frees the roster spot for free, so there's no actual
-        # trade-off to name here, unlike a real drop. Say plainly when he's
-        # NOT actually injured (some leagues allow any rostered player into
-        # IR) rather than papering over it with a vague word - confirmed
-        # against a real league where an IR-eligible player had no injury
+    if drop.ir_eligible and ir_slots_available > 0:
+        # Your league's own IR rules already qualify this player, and you
+        # actually have an open slot right now - stashing him there frees
+        # the roster spot for free, so there's no actual trade-off to name
+        # here, unlike a real drop. Say plainly when he's NOT actually
+        # injured (some leagues allow any rostered player into IR) rather
+        # than papering over it with a vague word - confirmed against a
+        # real league where an IR-eligible player had no injury
         # designation at all, and a generic "is eligible" reads as if he's
         # hurt when he isn't.
         if drop.injury_status:
@@ -335,21 +346,33 @@ def move_rationale(move: dict) -> str:
             fa_clause = f"{fa_status.title()} but could still help this week"
         else:
             fa_clause = "can help as soon as this week"
-        return (
+        text = (
             f"Add {fa.name} (FantasyPros {fa_rank_txt}) — {fa_clause}. "
             f"{drop.name} (FantasyPros {drop_rank_txt}) {drop_clause}, so "
             f"stash him on IR instead of dropping him; that opens the roster "
             f"spot for {fa.name} at no cost.{espn_suffix}"
         )
+        return text, ir_slots_available - 1
 
-    return (
+    ir_note = ""
+    if drop.ir_eligible:
+        # He'd qualify for IR, but there's no actual slot open for him
+        # right now - either every slot's already occupied, or a
+        # higher-priority move earlier in this same list already claimed
+        # the last one. Say so rather than silently reverting to the
+        # ordinary-drop wording, which would look like his IR eligibility
+        # was never considered.
+        ir_note = " (He's IR-eligible, but your IR slots are full, so this is a real drop.)"
+
+    text = (
         f"Add {fa.name} (FantasyPros {fa_rank_txt}), drop {drop.name} "
         f"(FantasyPros {drop_rank_txt}) — {timing} the clearly better "
-        f"FantasyPros-ranked option at {pos} this week.{espn_suffix}"
+        f"FantasyPros-ranked option at {pos} this week.{ir_note}{espn_suffix}"
     )
+    return text, ir_slots_available
 
 
-def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets, top_moves, blend=None, fp_unchanged_positions=None) -> str:
+def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_proj, need, waiver_order, waiver_targets, top_moves, blend=None, fp_unchanged_positions=None, ir_free=0) -> str:
     template = (Path(__file__).parent / "report_template.html").read_text()
 
     def player_row(p):
@@ -367,6 +390,7 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         for slot in lineup_result.starters
     ]
     bench = [player_row(p) for p in lineup_result.bench]
+    ir = [player_row(p) for p in lineup_result.ir]
 
     waivers = {
         pos: [
@@ -399,9 +423,10 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
         "fp_stale": blend.stale if blend is not None else None,
         "fp_stale_days": round(blend.age_days) if blend is not None else None,
         "fp_unchanged_positions": fp_unchanged_positions or [],
-        "top_moves": [move_rationale(m) for m in top_moves],
+        "top_moves": _rationales(top_moves, ir_free),
         "starters": starters,
         "bench": bench,
+        "ir": ir,
         "changes": lineup_result.changes,
         "need": need,
         "waiver_order": waiver_order,
@@ -409,6 +434,19 @@ def render_html(league_name, me, week, lineup_result, opponent, my_proj, opp_pro
     }
 
     return template.replace("__REPORT_DATA_JSON__", json.dumps(data))
+
+
+def _rationales(top_moves: list[dict], ir_free: int) -> list[str]:
+    """move_rationale() for every move in priority order, tracking how
+    many real IR slots are left as we go - the first move(s) that would
+    stash an IR-eligible drop get the free framing, any past ir_free do
+    not (see move_rationale())."""
+    texts = []
+    ir_slots_left = ir_free
+    for m in top_moves:
+        text, ir_slots_left = move_rationale(m, ir_slots_left)
+        texts.append(text)
+    return texts
 
 
 def main() -> None:
@@ -444,6 +482,17 @@ def main() -> None:
     waiver_order, waiver_targets = rank_waiver_targets(league, need, blend)
     top_moves = top_waiver_moves(lineup_result, waiver_order, waiver_targets)
 
+    # How many of the league's actual IR slots are still open right now -
+    # confirmed against a real league that this matters: a Top Waiver Move
+    # once claimed an IR-eligible bench player could be stashed "at no
+    # cost" when every IR slot was already spoken for (one already
+    # occupied, per lineup_result.ir; the rest already earmarked by other
+    # roster decisions), which wasn't actually true. ir_slots absent from
+    # league_config.json defaults to 0 (no known capacity) rather than
+    # guessing, per this project's "don't guess" convention elsewhere.
+    ir_capacity = config.get("ir_slots", 0)
+    ir_free = max(0, ir_capacity - len(lineup_result.ir))
+
     old_snapshot = snap.load_snapshot()
     new_player_snapshot = attach_rank_moves(roster, waiver_targets, old_snapshot["players"])
 
@@ -461,7 +510,7 @@ def main() -> None:
 
     html = render_html(
         league.settings.name, me, week, lineup_result, opponent, my_proj, opp_proj,
-        need, waiver_order, waiver_targets, top_moves, blend, fp_unchanged_positions,
+        need, waiver_order, waiver_targets, top_moves, blend, fp_unchanged_positions, ir_free,
     )
 
     out_dir = ROOT / "docs"

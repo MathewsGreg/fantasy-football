@@ -32,6 +32,12 @@ WARN_STATUSES = {"DOUBTFUL", "QUESTIONABLE"}
 
 # ESPN lineupSlot strings that count as "currently benched" rather than starting.
 BENCH_SLOTS = {"BE", "IR"}
+# The subset of BENCH_SLOTS that's specifically an IR slot, not a plain
+# bench spot - distinguished so the report doesn't lump "already stashed
+# on IR" in with "sitting on your bench," and so waiver-drop suggestions
+# don't treat an IR player as an ordinary droppable bench player (see
+# weekly_report.py's ir_free tracking for the actual slot-capacity check).
+IR_SLOTS = {"IR"}
 
 
 @dataclass
@@ -89,6 +95,10 @@ class LineupSlot:
 class LineupSuggestion:
     starters: list[LineupSlot] = field(default_factory=list)
     bench: list[RosterPlayer] = field(default_factory=list)
+    ir: list[RosterPlayer] = field(default_factory=list)  # players ESPN
+    # currently has parked on an actual IR slot - kept separate from bench
+    # since they're not competing for a bench spot and shouldn't be
+    # suggested as a "drop this bench player" candidate.
     changes: list[str] = field(default_factory=list)
 
 
@@ -162,7 +172,9 @@ def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible
         slot_name = "FLEX" if flex_count == 1 else f"FLEX{i + 1}"
         result.starters.append(LineupSlot(slot_name, player))
 
-    result.bench = [p for p in roster if p.player_id not in used_ids]
+    not_started = [p for p in roster if p.player_id not in used_ids]
+    result.ir = [p for p in not_started if p.current_slot in IR_SLOTS]
+    result.bench = [p for p in not_started if p.current_slot not in IR_SLOTS]
 
     # Diff against what ESPN currently has starting.
     suggested_starter_ids = {slot.player.player_id for slot in result.starters if slot.player}

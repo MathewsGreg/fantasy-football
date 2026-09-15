@@ -49,10 +49,39 @@ C-) — everything else in the report (dedicated-slot lineup order, waiver
 targets, Top Waiver Moves, the refresh-date banner) stayed correct and
 stable across both runs. `fp_blend.py`'s name-matching has since held up
 across the full Week 1 → Week 2 transition too, still producing sensible
-Waiver Targets and two well-formed Top Waiver Moves (both correct
-IR-stash suggestions) on the first Week 2 run — worth continuing to
-watch as the season goes on (more weeks, more edge-case names), but no
-longer an unverified assumption for at least this first real transition.
+Waiver Targets and well-formed Top Waiver Moves on the first Week 2
+run — worth continuing to watch as the season goes on (more weeks, more
+edge-case names).
+
+**Correction to the above:** those first Week 2 Top Waiver Moves were
+*not* actually correct, despite being reported as confirmed here at the
+time — they included two "stash him on IR instead of dropping, at no
+cost" suggestions, both wrong, because the code never checked whether a
+real IR slot was actually open (see the IR fix below). Leaving this note
+rather than quietly rewriting the earlier claim.
+
+**IR-slot capacity bug found and fixed on real data:** a real user
+report caught two things the code got wrong. First, a player ESPN
+already has parked on an actual IR slot (e.g. a season-ending injury)
+was being shown as a normal "Bench" player with no indication he wasn't
+competing for a bench spot — `LineupSuggestion` now splits `bench` and
+`ir` (see `lineup.py`), and the report shows IR as its own section.
+Second, and more consequentially: `move_rationale()`'s "stash him on IR
+instead of dropping, at no cost" framing only ever checked a drop
+candidate's own `ir_eligible` flag, never whether the league actually
+had an open IR slot to put him in — on a real 2-IR-slot league with one
+slot already occupied, it recommended stashing a *second* IR-eligible
+player "at no cost" as if the slot were free. Fixed: `league_config.json`
+gained `ir_slots` (the league's real IR-slot count), and a running
+`ir_slots_available` counter is threaded through the whole Top Waiver
+Moves list in priority order, so only as many suggestions as there are
+actually-free slots get the no-cost framing; the rest say plainly *"He's
+IR-eligible, but your IR slots are full, so this is a real drop."* Also
+excludes IR occupants from the "weakest bench player" pool
+`top_waiver_moves()` compares free agents against, since they were never
+really competing for a bench spot. Unit-tested against the reported
+scenario (2 IR slots, 1 occupied, 3 IR-eligible drop candidates
+queued) — only the first correctly claims the free slot.
 
 **Previously verified, under the old ESPN-authoritative design, against
 the real league across several rounds of actual data** (not just
@@ -256,15 +285,30 @@ one-line rationale, ranked by the FantasyPros rank gap between the two.
 For each position, it compares the best FantasyPros-ranked available
 free agent against your *worst* FantasyPros-ranked bench player — a
 bench player FantasyPros doesn't rank at all this week is skipped as a
-drop candidate rather than assumed droppable (don't guess). Deliberately
-doesn't require the free agent to be healthy *this week*: a hurt or IR
-player FantasyPros still ranks well ahead of your bench guy surfaces as
-a stash recommendation even though he can't play this week; the
-rationale says so explicitly either way. If nothing clears a small
-minimum rank improvement (`MIN_RANK_IMPROVEMENT`, currently 5 rank
-spots — enough to filter out noise without being so strict it hides real
-opportunities), it says there's nothing worth doing rather than
-manufacturing a move.
+drop candidate rather than assumed droppable (don't guess), and a player
+ESPN already has parked on an actual IR slot is excluded from "bench"
+entirely (see the IR section below) rather than treated as a normal
+droppable bench player. Deliberately doesn't require the free agent to
+be healthy *this week*: a hurt or IR player FantasyPros still ranks well
+ahead of your bench guy surfaces as a stash recommendation even though
+he can't play this week; the rationale says so explicitly either way.
+If nothing clears a small minimum rank improvement
+(`MIN_RANK_IMPROVEMENT`, currently 5 rank spots — enough to filter out
+noise without being so strict it hides real opportunities), it says
+there's nothing worth doing rather than manufacturing a move.
+
+**A "stash him on IR instead of dropping" suggestion only fires when a
+real IR slot is actually open.** `league_config.json`'s `ir_slots`
+(your league's actual IR-slot count) minus however many ESPN currently
+has you using is the true number free; a drop candidate's own
+`ir_eligible` flag was never enough by itself — confirmed against a real
+league where a suggestion claimed a stash was "free" while both of that
+league's 2 IR slots were already accounted for (one already occupied,
+the rest already claimed by higher-priority suggestions in the same Top
+Waiver Moves list). When there's no real slot left, the rationale says
+so plainly (*"He's IR-eligible, but your IR slots are full, so this is a
+real drop"*) rather than repeating the no-cost framing for a slot that
+doesn't exist. See `move_rationale()`'s `ir_slots_available` parameter.
 
 Waiver Targets by position go 10 deep for RB/WR (scarce, season-swinging
 positions worth digging into, injured stashes included) and 5 deep for

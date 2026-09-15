@@ -340,6 +340,25 @@ A position can come back shallower than that if FantasyPros simply
 doesn't rank that many free agents this week — the list is never padded
 out with ESPN-only, FantasyPros-unranked players to hit the depth target.
 
+**A real drop that would release a highly-owned player gets a loud
+warning, not a clean recommendation.** FantasyPros' WEEKLY rank can't
+tell "hurt/tough matchup this one week" apart from "actually
+replacement-level" — confirmed against a real case where a predraft
+top-3 TE, still 100% owned, got ranked TE35 (grade F) off a single bad
+week, and the report recommended dropping him for a 20%-owned streamer
+as if they were the same caliber of asset. Rather than feeding in draft
+position (a new input) or adding Rest-of-Season rankings (doubling the
+weekly file-grab), this uses ESPN's `percent_owned` — already fetched
+every run, free — as the signal: a drop candidate at or above
+`HIGH_OWNERSHIP_DROP_WARNING` (75%) gets an explicit *"Heads up: ...
+well above what his rank this week alone suggests... expect another team
+to add him"* appended to the rationale. Doesn't block or filter the move
+(it might still be the right one-week call if he's truly unplayable and
+you need a body) — just makes sure you're never blindsided into cutting
+a real asset. A judgment call on the threshold, same as elsewhere in
+this file — revisit if it fires too often or not enough. Doesn't apply
+to the IR-stash branch, since nothing actually leaves your roster there.
+
 ### FantasyPros weekly rankings
 
 Unlike the draft-day export (one combined "ALL positions" file),

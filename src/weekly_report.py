@@ -265,6 +265,21 @@ def attach_rank_moves(roster: list[RosterPlayer], waiver_targets: dict, old_snap
 # judgment call - revisit if the list feels too eager or too quiet.
 MIN_RANK_IMPROVEMENT = 5
 
+# A genuine drop candidate at or above this ESPN ownership percentage gets
+# a loud warning rather than a clean recommendation. FantasyPros' WEEKLY
+# rank can't distinguish "hurt/bye this one week" from "actually
+# replacement-level" - a real predraft top-3 TE, still 100% owned, got
+# ranked TE35 (grade F) purely off a single bad-matchup/injury week, and
+# the report recommended dropping him for a 20%-owned streamer as if he
+# were the same caliber of asset. percent_owned is a free, already-fetched
+# proxy for "the wider market still values him long-term" - no extra data
+# feed needed (ROS rankings would be more precise but double the weekly
+# file-grabbing workload; draft position would need a new input entirely).
+# A judgment call, not a hard block - the move might still be the right
+# one-week call if he's truly out and you need a body - revisit the
+# threshold if it fires too often or not enough.
+HIGH_OWNERSHIP_DROP_WARNING = 75.0
+
 
 def top_waiver_moves(lineup_result, waiver_order, waiver_targets, max_moves: int = 5):
     """Best add/drop pairings: for each position, compare the top
@@ -376,10 +391,24 @@ def move_rationale(move: dict, ir_slots_available: int = 0) -> tuple[str, int]:
         # was never considered.
         ir_note = " (He's IR-eligible, but your IR slots are full, so this is a real drop.)"
 
+    ownership_warning = ""
+    if drop.percent_owned is not None and drop.percent_owned >= HIGH_OWNERSHIP_DROP_WARNING:
+        # This is a real drop (roster spot released to waivers), not a
+        # same-team IR stash - a highly-owned player who's about to leave
+        # your roster is exactly the case worth flagging loudly, since
+        # someone else in your league will very likely grab him.
+        ownership_warning = (
+            f" Heads up: {drop.name} is {drop.percent_owned:.0f}% owned "
+            f"league-wide — well above what his {pos}{drop.fp_rank} rank "
+            f"this week alone suggests. That gap usually means a short-term "
+            f"injury or tough matchup, not someone who's actually "
+            f"replacement-level; if you cut him, expect another team to add him."
+        )
+
     text = (
         f"Add {fa.name} (FantasyPros {fa_rank_txt}), drop {drop.name} "
         f"(FantasyPros {drop_rank_txt}) — {timing} the clearly better "
-        f"FantasyPros-ranked option at {pos} this week.{ir_note}{espn_suffix}"
+        f"FantasyPros-ranked option at {pos} this week.{ir_note}{ownership_warning}{espn_suffix}"
     )
     return text, ir_slots_available
 

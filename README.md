@@ -47,12 +47,12 @@ same real FantasyPros export, re-run after the fix, and it put Tee
 Higgins (WR15, grade A) into FLEX instead of Dalton Kincaid (TE14, grade
 C-) — everything else in the report (dedicated-slot lineup order, waiver
 targets, Top Waiver Moves, the refresh-date banner) stayed correct and
-stable across both runs. Not yet confirmed: whether `fp_blend.py`'s
-name-matching keeps finding enough of a real roster/free-agent pool
-across a *full* season (multiple weeks, more positions, edge-case names)
-to keep producing a useful Waiver Targets list, beyond this one Week 1
-run. Keep an eye on it over the next few weeks before fully trusting it
-unattended.
+stable across both runs. `fp_blend.py`'s name-matching has since held up
+across the full Week 1 → Week 2 transition too, still producing sensible
+Waiver Targets and two well-formed Top Waiver Moves (both correct
+IR-stash suggestions) on the first Week 2 run — worth continuing to
+watch as the season goes on (more weeks, more edge-case names), but no
+longer an unverified assumption for at least this first real transition.
 
 **Previously verified, under the old ESPN-authoritative design, against
 the real league across several rounds of actual data** (not just
@@ -400,14 +400,17 @@ identical week, showing nothing rather than a false signal. ESPN's
 across the boundary, since ownership is a rolling season-long stat, not
 tied to a specific week's matchups.
 
-Confirmed against several consecutive real days (Sept 6-8, 2026) —
-correctly caught real rank/ownership movement, correctly stayed quiet on
-noise, and correctly flagged a forgotten re-export — all still within
-Week 1. The week-boundary guard itself is unit-tested (simulated Week 1 →
-Week 2 rollover, and a same-week unranked→ranked transition) but hasn't
-yet been exercised by an actual Week 1 → Week 2 rollover with real
-FantasyPros data — worth watching the first Monday/Tuesday of Week 2 to
-confirm no moves get reported for anyone purely from the week changing.
+Confirmed against several consecutive real days within Week 1 (Sept 6-11,
+2026) — correctly caught real rank/ownership movement, correctly stayed
+quiet on noise, and correctly flagged a forgotten re-export. **Confirmed
+against the actual Week 1 → Week 2 rollover** (Sept 15, 2026): every
+`fp_move` came back `null` across all starters, bench, and ~55 waiver
+targets, despite most players' FantasyPros rank changing completely
+week-to-week (a new starting QB, a FLEX swap, a bench TE jumping from
+unranked to TE35) — the guard correctly refused to compare Week 1 and
+Week 2 numbers. `owned_move` kept working right through the same
+transition (ESPN ownership isn't week-scoped), confirming both halves of
+the design on real data, not just the unit tests.
 
 ### Publishing it (GitHub Pages, one-time)
 

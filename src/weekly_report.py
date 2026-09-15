@@ -47,6 +47,20 @@ HEALTHY_STATUSES = {"", "ACTIVE", "NORMAL"}  # ESPN reports a healthy D/ST as
 # 'NORMAL' rather than 'ACTIVE' or blank - confirmed against a real league
 # (a healthy team defense showed up as "[NORMAL]"), so both count as fine.
 
+# ESPN's own IR rules only let a player carrying one of these designations
+# actually move to an IR slot (their support doc: "Only players tagged as
+# IR, IL, or O fit into the IR slot... Q or D cannot be placed on IR").
+# 'SUSPENSION' isn't an injury designation at all, so it's excluded too.
+# Deliberately NOT trusting ir_eligible (ESPN's own eligibleSlots-derived
+# flag) by itself for this - confirmed against a real league where
+# eligibleSlots reported IR-eligible for a merely Questionable player (and,
+# separately, for a completely healthy one - see README) even though ESPN's
+# own UI wouldn't actually let that move happen. Both this status check AND
+# ir_eligible must hold before move_rationale() calls a drop candidate a
+# genuine "stash on IR at no cost" - either one alone isn't reliable enough
+# to act on.
+IR_QUALIFYING_STATUSES = {"OUT", "INJURY_RESERVE"}
+
 
 def box_player_to_roster_player(bp) -> RosterPlayer:
     raw_status = bp.injuryStatus or ""
@@ -325,21 +339,19 @@ def move_rationale(move: dict, ir_slots_available: int = 0) -> tuple[str, int]:
         espn_bits.append(f"{drop.name} {drop.percent_owned:.0f}% owned")
     espn_suffix = f" (ESPN: {'; '.join(espn_bits)}.)" if espn_bits else ""
 
-    if drop.ir_eligible and ir_slots_available > 0:
-        # Your league's own IR rules already qualify this player, and you
-        # actually have an open slot right now - stashing him there frees
-        # the roster spot for free, so there's no actual trade-off to name
-        # here, unlike a real drop. Say plainly when he's NOT actually
-        # injured (some leagues allow any rostered player into IR) rather
-        # than papering over it with a vague word - confirmed against a
-        # real league where an IR-eligible player had no injury
-        # designation at all, and a generic "is eligible" reads as if he's
-        # hurt when he isn't.
-        if drop.injury_status:
-            drop_clause = f"is {drop.injury_status.replace('_', ' ').title()} and IR-eligible in this league"
-        else:
-            drop_clause = ("isn't actually injured, but your league's IR-slot rules allow "
-                            "any rostered player there anyway")
+    # Genuine IR eligibility needs BOTH ESPN's own ir_eligible flag AND an
+    # actual qualifying status (see IR_QUALIFYING_STATUSES) - not just the
+    # flag alone, which has been observed True for players ESPN's own UI
+    # wouldn't actually let onto IR.
+    genuinely_ir_eligible = drop.ir_eligible and drop.injury_status in IR_QUALIFYING_STATUSES
+
+    if genuinely_ir_eligible and ir_slots_available > 0:
+        # Your league's own IR rules already qualify this player, he
+        # actually carries a qualifying designation, and you have an open
+        # slot right now - stashing him there frees the roster spot for
+        # free, so there's no actual trade-off to name here, unlike a real
+        # drop.
+        drop_clause = f"is {drop.injury_status.replace('_', ' ').title()} and IR-eligible in this league"
         if fa_status in ("OUT", "INJURY_RESERVE"):
             fa_clause = f"another season-long stash — he won't play this week ({fa_status.replace('_', ' ').title()}) either"
         elif fa_status:
@@ -355,7 +367,7 @@ def move_rationale(move: dict, ir_slots_available: int = 0) -> tuple[str, int]:
         return text, ir_slots_available - 1
 
     ir_note = ""
-    if drop.ir_eligible:
+    if genuinely_ir_eligible:
         # He'd qualify for IR, but there's no actual slot open for him
         # right now - either every slot's already occupied, or a
         # higher-priority move earlier in this same list already claimed

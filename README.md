@@ -83,6 +83,25 @@ really competing for a bench spot. Unit-tested against the reported
 scenario (2 IR slots, 1 occupied, 3 IR-eligible drop candidates
 queued) — only the first correctly claims the free slot.
 
+**Follow-up, same session:** ESPN's own `ir_eligible` flag turned out not
+to be trustworthy by itself either. Per ESPN's own support docs, only
+`OUT`/`IR`/`IL` designations can actually move to an IR slot —
+Questionable/Doubtful never can — but `eligibleSlots` had reported
+`ir_eligible = True` for a merely Questionable player (Brian Thomas Jr.,
+in the same real scenario above), and the user confirmed by hand that
+ESPN's own UI wouldn't actually let that move happen. This is the same
+flag the README already flagged as unreliable once before (see the
+`ir_eligible`/healthy-player bullet below) — now confirmed unreliable in
+the opposite direction too (falsely permissive on status, not just on
+health). Fixed: `move_rationale()` now requires BOTH `ir_eligible` and
+the player's actual status being in `IR_QUALIFYING_STATUSES`
+(`OUT`/`INJURY_RESERVE`) before calling anyone IR-eligible at all — a
+Questionable or Doubtful bench player is now always treated as a plain
+drop, with no IR mention whatsoever, regardless of what ESPN's flag
+says. Unit-tested: an OUT drop candidate still gets the free-stash
+framing when a slot is open; a Questionable one never does, even with
+slots free.
+
 **Previously verified, under the old ESPN-authoritative design, against
 the real league across several rounds of actual data** (not just
 synthetic tests) — the ESPN connection, lineup diff, waiver ranking, IR
@@ -103,9 +122,12 @@ first assumption:
   `player_info()` call to get real values before ranking any moves.
 - A player's `ir_eligible` flag can be `True` even when completely
   healthy, if your league's IR-slot setting allows any rostered player
-  (not just injured ones) — confirmed on a real healthy player.
-  `move_rationale()` says this plainly rather than implying an injury
-  that isn't there.
+  (not just injured ones) — confirmed on a real healthy player. **Update:**
+  this flag turned out to be unreliable in the opposite direction too
+  (falsely `True` for a merely Questionable player whose status doesn't
+  actually qualify per ESPN's own rules) — `move_rationale()` no longer
+  trusts it alone; see the IR-slot-capacity fix above for the current
+  (status-gated) logic.
 - FantasyPros' weekly rankings appear to exclude players ruled out for
   the week entirely (a real OUT player was simply absent from the RB
   file) — expected, not a bug; those players just get no FantasyPros

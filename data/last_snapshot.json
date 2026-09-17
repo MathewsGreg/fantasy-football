@@ -1,228 +1,234 @@
 {
   "fp_sources": {
     "DST": {
-      "mtime": 1789600847.8422937,
+      "mtime": 1789686672.318531,
       "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_2_DST_Rankings.csv",
       "week": 2,
       "year": 2026
     },
     "K": {
-      "mtime": 1789600844.821839,
+      "mtime": 1789686669.59235,
       "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_2_K_Rankings.csv",
       "week": 2,
       "year": 2026
     },
     "QB": {
-      "mtime": 1789600825.595932,
+      "mtime": 1789686649.8747883,
       "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_2_QB_Rankings.csv",
       "week": 2,
       "year": 2026
     },
     "RB": {
-      "mtime": 1789600829.3157446,
+      "mtime": 1789686654.8958323,
       "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_2_RB_Rankings.csv",
       "week": 2,
       "year": 2026
     },
     "TE": {
-      "mtime": 1789600834.8899302,
+      "mtime": 1789686662.4493303,
       "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_2_TE_Rankings.csv",
       "week": 2,
       "year": 2026
     },
     "WR": {
-      "mtime": 1789600832.6240907,
+      "mtime": 1789686659.1247084,
       "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_2_WR_Rankings.csv",
       "week": 2,
       "year": 2026
     }
   },
   "players": {
+    "-16004": {
+      "fp_rank": 17,
+      "fp_week": 2,
+      "fp_year": 2026,
+      "percent_owned": 7.48
+    },
     "-16006": {
       "fp_rank": 16,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 10.15
+      "percent_owned": 9.64
     },
     "-16009": {
-      "fp_rank": 10,
-      "fp_week": 2,
-      "fp_year": 2026,
-      "percent_owned": 17.81
-    },
-    "-16012": {
       "fp_rank": 11,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 48.19
+      "percent_owned": 19.16
     },
-    "-16017": {
-      "fp_rank": 8,
+    "-16012": {
+      "fp_rank": 10,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 65.15
+      "percent_owned": 55.08
     },
     "-16024": {
       "fp_rank": 6,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 45.55
+      "percent_owned": 43.82
     },
     "-16029": {
       "fp_rank": 15,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 1.56
+      "percent_owned": 1.86
     },
     "-16034": {
       "fp_rank": 9,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 96.08
+      "percent_owned": 95.5
     },
-    "17427": {
-      "fp_rank": 7,
+    "2573079": {
+      "fp_rank": 23,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 38.03
+      "percent_owned": 6.08
     },
     "3046439": {
-      "fp_rank": 19,
+      "fp_rank": 18,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 51.88
+      "percent_owned": 51.52
+    },
+    "3050478": {
+      "fp_rank": 16,
+      "fp_week": 2,
+      "fp_year": 2026,
+      "percent_owned": 8.37
     },
     "3117256": {
-      "fp_rank": 17,
+      "fp_rank": 16,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 19.09
+      "percent_owned": 19.39
+    },
+    "3149687": {
+      "fp_rank": 49,
+      "fp_week": 2,
+      "fp_year": 2026,
+      "percent_owned": 17.87
+    },
+    "3150744": {
+      "fp_rank": 12,
+      "fp_week": 2,
+      "fp_year": 2026,
+      "percent_owned": 17.67
     },
     "3916148": {
       "fp_rank": 34,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 87.86
+      "percent_owned": 87.7
     },
     "3916433": {
-      "fp_rank": 41,
+      "fp_rank": 40,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 77.88
+      "percent_owned": 77.52
     },
     "3917232": {
-      "fp_rank": 13,
+      "fp_rank": 11,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 6.89
-    },
-    "3917792": {
-      "fp_rank": 23,
-      "fp_week": 2,
-      "fp_year": 2026,
-      "percent_owned": 31.39
+      "percent_owned": 8.28
     },
     "4035538": {
       "fp_rank": 17,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 95.52
+      "percent_owned": 95.81
     },
     "4036133": {
       "fp_rank": 20,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 62.73
+      "percent_owned": 64.18
     },
     "4036378": {
       "fp_rank": 16,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 43.44
+      "percent_owned": 44.16
     },
     "4040715": {
       "fp_rank": 3,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 98.74
+      "percent_owned": 98.81
     },
     "4047646": {
       "fp_rank": null,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 97.95
+      "percent_owned": 97.61
     },
     "4239993": {
       "fp_rank": 18,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 96.88
-    },
-    "4241474": {
-      "fp_rank": 50,
-      "fp_week": 2,
-      "fp_year": 2026,
-      "percent_owned": 24.28
+      "percent_owned": 96.9
     },
     "4242512": {
       "fp_rank": 22,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 18.99
+      "percent_owned": 18.46
     },
     "4259545": {
       "fp_rank": 14,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 96.39
+      "percent_owned": 96.51
     },
     "4360234": {
       "fp_rank": 9,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 26.56
+      "percent_owned": 27.89
     },
     "4360569": {
       "fp_rank": null,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 66.72
+      "percent_owned": 64.72
     },
     "4361411": {
       "fp_rank": 21,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 19.27
+      "percent_owned": 20.75
     },
     "4362249": {
-      "fp_rank": 46,
+      "fp_rank": 44,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 66.99
+      "percent_owned": 66.38
     },
     "4362619": {
-      "fp_rank": 43,
+      "fp_rank": 44,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 27.61
+      "percent_owned": 26.78
     },
     "4373678": {
-      "fp_rank": 49,
+      "fp_rank": 47,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 68.31
+      "percent_owned": 68.86
     },
     "4385690": {
-      "fp_rank": 5,
+      "fp_rank": 4,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 80.43
+      "percent_owned": 81.92
     },
     "4426385": {
       "fp_rank": null,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 52.93
+      "percent_owned": 52.81
     },
     "4426515": {
       "fp_rank": 1,
@@ -231,154 +237,148 @@
       "percent_owned": 99.92
     },
     "4428557": {
-      "fp_rank": 44,
+      "fp_rank": 45,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 51.38
+      "percent_owned": 50.47
     },
     "4428718": {
+      "fp_rank": 54,
+      "fp_week": 2,
+      "fp_year": 2026,
+      "percent_owned": 25.55
+    },
+    "4428850": {
       "fp_rank": 55,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 26.81
-    },
-    "4428850": {
-      "fp_rank": 56,
-      "fp_week": 2,
-      "fp_year": 2026,
-      "percent_owned": 20.21
+      "percent_owned": 23.84
     },
     "4429023": {
-      "fp_rank": 29,
+      "fp_rank": 30,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 78.26
+      "percent_owned": 77.89
     },
     "4429025": {
       "fp_rank": 29,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 71.49
+      "percent_owned": 71.17
     },
     "4429059": {
-      "fp_rank": 42,
+      "fp_rank": 43,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 56.1
+      "percent_owned": 55.59
     },
     "4429205": {
-      "fp_rank": 44,
+      "fp_rank": 43,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 75.52
+      "percent_owned": 75.18
     },
     "4429835": {
-      "fp_rank": 46,
+      "fp_rank": 47,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 4.59
+      "percent_owned": 5.13
     },
     "4431611": {
       "fp_rank": 4,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 94.3
+      "percent_owned": 94.94
     },
     "4432577": {
-      "fp_rank": 20,
+      "fp_rank": 21,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 27.46
+      "percent_owned": 28.37
     },
     "4432665": {
       "fp_rank": 35,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 99.8
+      "percent_owned": 99.81
     },
     "4432773": {
       "fp_rank": 48,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 80.77
+      "percent_owned": 80.32
     },
     "4568490": {
       "fp_rank": 38,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 73.63
+      "percent_owned": 73.52
     },
     "4569559": {
-      "fp_rank": 51,
+      "fp_rank": 49,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 44.17
+      "percent_owned": 50.82
     },
     "4569587": {
       "fp_rank": 52,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 77.97
+      "percent_owned": 77.09
     },
     "4576297": {
       "fp_rank": 22,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 6.05
+      "percent_owned": 5.83
     },
     "4596334": {
-      "fp_rank": 45,
+      "fp_rank": 46,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 19.6
+      "percent_owned": 19.46
     },
     "4685247": {
       "fp_rank": 48,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 13.59
+      "percent_owned": 14.19
     },
     "4685720": {
-      "fp_rank": 21,
+      "fp_rank": 20,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 28.11
+      "percent_owned": 31.64
     },
     "4686361": {
-      "fp_rank": 5,
+      "fp_rank": 6,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 88.01
+      "percent_owned": 87.95
     },
-    "4686658": {
-      "fp_rank": 49,
+    "4832800": {
+      "fp_rank": 56,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 32.64
+      "percent_owned": 26.3
     },
-    "4697745": {
-      "fp_rank": 8,
+    "4832955": {
+      "fp_rank": 50,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 53.73
+      "percent_owned": 14.46
     },
     "4869461": {
-      "fp_rank": 10,
+      "fp_rank": 13,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 14.76
-    },
-    "4869645": {
-      "fp_rank": 54,
-      "fp_week": 2,
-      "fp_year": 2026,
-      "percent_owned": 31.86
+      "percent_owned": 15.02
     },
     "4870653": {
       "fp_rank": 50,
       "fp_week": 2,
       "fp_year": 2026,
-      "percent_owned": 59.46
+      "percent_owned": 58.74
     }
   }
 }

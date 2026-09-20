@@ -500,7 +500,20 @@ def main() -> None:
               "source for lineup order and waiver targets now, so neither can "
               "be ranked until you add weekly exports (see README's Phase 3 "
               "section).")
-    elif blend.stale:
+    else:
+        # Print exactly which (year, week) file got picked per position -
+        # confirmed via a real mix-up where a run used Week 1 for everything
+        # because the Week 2 CSVs hadn't actually been saved into
+        # data/weekly/ yet at the moment the script ran; nothing in the
+        # code was wrong, but there was also no way to see that from the
+        # console output alone, only by noticing the staleness date. This
+        # makes "did it actually pick up what I just grabbed" a one-glance
+        # check instead of a diagnosis.
+        picked = ", ".join(
+            f"{pos} Week {src['week']}" for pos, src in sorted(blend.sources.items())
+        )
+        print(f"FantasyPros files in use: {picked}")
+    if blend is not None and blend.stale:
         print(f"WARNING: your oldest currently-used FantasyPros position file is "
               f"{blend.age_days:.0f} days old (as of {blend.as_of_str}) - consider "
               f"re-exporting from FantasyPros (their own refresh cycle is weekly). "

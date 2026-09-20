@@ -7,9 +7,9 @@
       "year": 2026
     },
     "K": {
-      "mtime": 1789137867.6234522,
-      "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_1_K_Rankings.csv",
-      "week": 1,
+      "mtime": 1789912319.0311728,
+      "path": "C:\\Users\\Diggs\\Dropbox\\PC\\Documents\\Claude\\fantasy-football\\data\\weekly\\FantasyPros_2026_Week_2_K_Rankings.csv",
+      "week": 2,
       "year": 2026
     },
     "QB": {
@@ -80,12 +80,6 @@
       "fp_year": 2026,
       "percent_owned": 95.14
     },
-    "17372": {
-      "fp_rank": 10,
-      "fp_week": 1,
-      "fp_year": 2026,
-      "percent_owned": 35.4
-    },
     "2573079": {
       "fp_rank": 23,
       "fp_week": 2,
@@ -99,8 +93,8 @@
       "percent_owned": 50.84
     },
     "3050478": {
-      "fp_rank": 15,
-      "fp_week": 1,
+      "fp_rank": 16,
+      "fp_week": 2,
       "fp_year": 2026,
       "percent_owned": 8.31
     },
@@ -123,8 +117,8 @@
       "percent_owned": 19.76
     },
     "3150744": {
-      "fp_rank": 9,
-      "fp_week": 1,
+      "fp_rank": 12,
+      "fp_week": 2,
       "fp_year": 2026,
       "percent_owned": 18.83
     },
@@ -139,6 +133,12 @@
       "fp_week": 2,
       "fp_year": 2026,
       "percent_owned": 76.66
+    },
+    "3917232": {
+      "fp_rank": 9,
+      "fp_week": 2,
+      "fp_year": 2026,
+      "percent_owned": 8.7
     },
     "4035538": {
       "fp_rank": 18,
@@ -195,8 +195,8 @@
       "percent_owned": 96.4
     },
     "4360234": {
-      "fp_rank": 5,
-      "fp_week": 1,
+      "fp_rank": 11,
+      "fp_week": 2,
       "fp_year": 2026,
       "percent_owned": 28.58
     },
@@ -320,12 +320,6 @@
       "fp_year": 2026,
       "percent_owned": 79.57
     },
-    "4567104": {
-      "fp_rank": 12,
-      "fp_week": 1,
-      "fp_year": 2026,
-      "percent_owned": 29.73
-    },
     "4569559": {
       "fp_rank": 45,
       "fp_week": 2,
@@ -357,8 +351,8 @@
       "percent_owned": 33.86
     },
     "4686361": {
-      "fp_rank": 3,
-      "fp_week": 1,
+      "fp_rank": 7,
+      "fp_week": 2,
       "fp_year": 2026,
       "percent_owned": 87.5
     },
@@ -367,6 +361,12 @@
       "fp_week": 2,
       "fp_year": 2026,
       "percent_owned": 29.75
+    },
+    "4869461": {
+      "fp_rank": 13,
+      "fp_week": 2,
+      "fp_year": 2026,
+      "percent_owned": 15.32
     },
     "4869645": {
       "fp_rank": 51,

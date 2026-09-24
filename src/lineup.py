@@ -197,7 +197,15 @@ def suggest_lineup(roster: list[RosterPlayer], roster_slots: dict, flex_eligible
             else:
                 reason = "no FantasyPros rank this week — using ESPN's projection"
             result.changes.append(f"Start {p.name} ({slot.slot_name}) — currently benched, {reason}.")
-        elif p.warn:
+        # Separate from the block above (not elif) - a player can be BOTH
+        # newly promoted off the bench AND Questionable/Doubtful, and both
+        # facts are worth a separate bullet. The elif form used to swallow
+        # the status warning for exactly that case: a promoted player's
+        # "Start X" bullet fired and the warn check below it never got a
+        # chance to - confirmed against a real report where Brock Bowers,
+        # Questionable, got promoted into FLEX with no game-time-check note
+        # anywhere in the narrative (only in the table's status tag).
+        if p.warn:
             result.changes.append(f"{p.name} is {p.injury_status.title()} — worth a game-time check before locking {slot.slot_name}.")
     for p in roster:
         if p.currently_starting and p.player_id not in suggested_starter_ids:
